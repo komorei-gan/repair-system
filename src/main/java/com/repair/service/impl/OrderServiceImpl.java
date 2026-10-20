@@ -1,0 +1,601 @@
+package com.repair.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.repair.common.enums.NotificationType;
+import com.repair.common.enums.OrderStatus;
+import com.repair.common.enums.RoleEnum;
+import com.repair.common.exception.BusinessException;
+import com.repair.common.result.ErrorCode;
+import com.repair.common.result.PageResult;
+import com.repair.common.util.OrderNoUtil;
+import com.repair.dto.AssignRequest;
+import com.repair.dto.CompleteRequest;
+import com.repair.dto.ConfirmRequest;
+import com.repair.dto.CreateOrderRequest;
+import com.repair.dto.OrderDetailVO;
+import com.repair.dto.OrderQuery;
+import com.repair.dto.OrderVO;
+import com.repair.dto.ReassignRequest;
+import com.repair.dto.ReasonRequest;
+import com.repair.dto.RepairerStatsVO;
+import com.repair.entity.Category;
+import com.repair.entity.OrderLog;
+import com.repair.entity.RepairOrder;
+import com.repair.entity.User;
+import com.repair.mapper.OrderLogMapper;
+import com.repair.mapper.RepairOrderMapper;
+import com.repair.mapper.UserMapper;
+import com.repair.security.LoginUser;
+import com.repair.security.SecurityUtil;
+import com.repair.service.CategoryService;
+import com.repair.service.NotifyService;
+import com.repair.service.OrderService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * 工单核心业务实现（design.md §1 完整状态机）。
+ * 每个状态流转方法：@Transactional → 行锁读工单 → 状态机校验 → 条件更新工单
+ * → 写 order_log → 写 notification，任一步失败全部回滚。
+ */
+@Service
+@RequiredArgsConstructor
+public class OrderServiceImpl implements OrderService {
+
+    private final RepairOrderMapper repairOrderMapper;
+
+    private final OrderLogMapper orderLogMapper;
+
+    private final UserMapper userMapper;
+
+    private final CategoryService categoryService;
+
+    private final NotifyService notifyService;
+
+    // ==================== 报修端 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long submit(CreateOrderRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        Category category = categoryService.getEnabledById(request.getCategoryId());
+
+        RepairOrder order = new RepairOrder();
+        order.setOrderNo(OrderNoUtil.generate());
+        order.setReporterId(current.getUserId());
+        order.setCategoryId(category.getId());
+        order.setTitle(request.getTitle());
+        order.setDescription(request.getDescription());
+        order.setImages(request.getImages());
+        order.setAddress(request.getAddress());
+        order.setContactPhone(request.getContactPhone());
+        order.setStatus(OrderStatus.PENDING);
+        order.setRemindCount(0);
+        repairOrderMapper.insert(order);
+
+        recordLog(order.getId(), current, "SUBMIT", null, OrderStatus.PENDING, "提交报修");
+
+        // 通知所有启用中的管理员
+        List<Long> adminIds = listEnabledUserIds(RoleEnum.ADMIN);
+        notifyService.notifyUsers(adminIds, NotificationType.ORDER,
+                "新报修工单待受理",
+                "单号 " + order.getOrderNo() + "：《" + order.getTitle() + "》已提交，请及时受理。",
+                order.getId());
+        return order.getId();
+    }
+
+    @Override
+    public PageResult<OrderVO> myOrders(Page<?> page, String status) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
+                .eq(RepairOrder::getReporterId, current.getUserId())
+                .eq(StringUtils.hasText(status), RepairOrder::getStatus, status)
+                .orderByDesc(RepairOrder::getCreatedAt);
+        Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
+        return PageResult.from(result.convert(this::toVO));
+    }
+
+    @Override
+    public OrderDetailVO detail(Long id) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = getOrder(id);
+        requireViewPermission(order, current);
+
+        User reporter = userMapper.selectById(order.getReporterId());
+        String categoryName = categoryName(order.getCategoryId());
+        User repairer = order.getRepairerId() == null ? null : userMapper.selectById(order.getRepairerId());
+
+        List<OrderLog> logs = orderLogMapper.selectList(new LambdaQueryWrapper<OrderLog>()
+                .eq(OrderLog::getOrderId, order.getId())
+                .orderByAsc(OrderLog::getCreatedAt));
+        Map<Long, String> operatorNames = userNames(logs.stream()
+                .map(OrderLog::getOperatorId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        List<OrderDetailVO.OrderLogVO> logVOs = logs.stream()
+                .map(log -> OrderDetailVO.OrderLogVO.from(log, operatorNames.get(log.getOperatorId())))
+                .toList();
+
+        return OrderDetailVO.from(order,
+                reporter == null ? null : displayName(reporter),
+                categoryName,
+                repairer == null ? null : displayName(repairer),
+                repairer == null ? null : repairer.getPhone(),
+                logVOs);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelByReporter(Long id, ReasonRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireReporter(order, current);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.CANCELLED);
+
+        UpdateWrapper<RepairOrder> wrapper = new UpdateWrapper<RepairOrder>()
+                .set("cancel_reason", request.getReason());
+        transition(order, OrderStatus.CANCELLED, wrapper);
+        recordLog(order.getId(), current, "CANCEL", OrderStatus.PENDING, OrderStatus.CANCELLED,
+                "报修人取消：" + request.getReason());
+
+        notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
+                "工单已取消",
+                "报修人取消了工单 " + order.getOrderNo() + "，原因：" + request.getReason() + "。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void confirm(Long id, ConfirmRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireReporter(order, current);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.CONFIRMED);
+
+        UpdateWrapper<RepairOrder> wrapper = new UpdateWrapper<RepairOrder>()
+                .set("rating", request.getRating())
+                .set("rating_comment", request.getRatingComment())
+                .set("confirm_time", LocalDateTime.now());
+        transition(order, OrderStatus.CONFIRMED, wrapper);
+        recordLog(order.getId(), current, "CONFIRM", OrderStatus.COMPLETED, OrderStatus.CONFIRMED,
+                "报修人确认并评价：" + request.getRating() + " 分");
+
+        // 更新师傅聚合数据（行锁防并发丢失更新）
+        if (order.getRepairerId() != null) {
+            User repairer = userMapper.selectByIdForUpdate(order.getRepairerId());
+            if (repairer != null) {
+                BigDecimal avg = avgRating(order.getRepairerId());
+                long finishCount = countByStatus(order.getRepairerId(), OrderStatus.CONFIRMED);
+                userMapper.update(null, new UpdateWrapper<User>()
+                        .eq("id", repairer.getId())
+                        .set("rating", avg)
+                        .set("finish_count", finishCount));
+            }
+        }
+
+        notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                "获得新评价",
+                "您的维修单 " + order.getOrderNo() + " 获得 " + request.getRating() + " 分评价。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void remind(Long id) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireReporter(order, current);
+        if (!OrderStatus.PROCESSING.equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+        if (order.getRemindCount() != null && order.getRemindCount() >= 3) {
+            throw new BusinessException(ErrorCode.REMIND_TOO_FREQUENT);
+        }
+        // 30 分钟内已催过则拒绝
+        List<OrderLog> lastRemind = orderLogMapper.selectList(new LambdaQueryWrapper<OrderLog>()
+                .eq(OrderLog::getOrderId, order.getId())
+                .eq(OrderLog::getAction, "REMIND")
+                .orderByDesc(OrderLog::getCreatedAt)
+                .last("LIMIT 1"));
+        if (!lastRemind.isEmpty() && lastRemind.get(0).getCreatedAt() != null
+                && lastRemind.get(0).getCreatedAt().plusMinutes(30).isAfter(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.REMIND_TOO_FREQUENT);
+        }
+
+        int rows = repairOrderMapper.update(null, new UpdateWrapper<RepairOrder>()
+                .eq("id", order.getId())
+                .eq("status", OrderStatus.PROCESSING)
+                .eq("deleted", 0)
+                .setSql("remind_count = remind_count + 1")
+                .set("updated_at", LocalDateTime.now()));
+        if (rows != 1) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+
+        recordLog(order.getId(), current, "REMIND", OrderStatus.PROCESSING, OrderStatus.PROCESSING, "报修人催单");
+        notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                "报修人催单",
+                "报修人催办工单 " + order.getOrderNo() + "：《" + order.getTitle() + "》。",
+                order.getId());
+    }
+
+    // ==================== 维修端 ====================
+
+    @Override
+    public PageResult<OrderVO> repairerOrders(Page<?> page, String status) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
+                .eq(RepairOrder::getRepairerId, current.getUserId())
+                .eq(StringUtils.hasText(status), RepairOrder::getStatus, status)
+                .orderByDesc(RepairOrder::getCreatedAt);
+        Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
+        return PageResult.from(result.convert(this::toVO));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void accept(Long id) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireRepairerOfOrder(order, current);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.PROCESSING);
+
+        transition(order, OrderStatus.PROCESSING,
+                new UpdateWrapper<RepairOrder>().set("accept_time", LocalDateTime.now()));
+        recordLog(order.getId(), current, "ACCEPT", OrderStatus.ASSIGNED, OrderStatus.PROCESSING, "师傅接单");
+
+        User repairer = userMapper.selectById(current.getUserId());
+        notifyService.notify(order.getReporterId(), NotificationType.ORDER,
+                "维修师傅已接单",
+                "您的报修单 " + order.getOrderNo() + " 已由师傅 " + displayName(repairer)
+                        + (StringUtils.hasText(repairer.getPhone()) ? "（电话 " + repairer.getPhone() + "）" : "")
+                        + " 接单，开始维修。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reject(Long id, ReasonRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireRepairerOfOrder(order, current);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.PENDING);
+
+        UpdateWrapper<RepairOrder> wrapper = new UpdateWrapper<RepairOrder>()
+                .set("repairer_id", null)
+                .set("reject_reason", request.getReason());
+        transition(order, OrderStatus.PENDING, wrapper);
+        recordLog(order.getId(), current, "REJECT", OrderStatus.ASSIGNED, OrderStatus.PENDING,
+                "师傅拒单：" + request.getReason());
+
+        notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
+                "师傅拒单",
+                "单号 " + order.getOrderNo() + " 被师傅拒单，原因：" + request.getReason() + "，请重新处理。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void complete(Long id, CompleteRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireRepairerOfOrder(order, current);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.COMPLETED);
+
+        transition(order, OrderStatus.COMPLETED,
+                new UpdateWrapper<RepairOrder>()
+                        .set("repair_result", request.getRepairResult())
+                        .set("finish_time", LocalDateTime.now()));
+        recordLog(order.getId(), current, "FINISH", OrderStatus.PROCESSING, OrderStatus.COMPLETED,
+                "维修完成：" + request.getRepairResult());
+
+        notifyService.notify(order.getReporterId(), NotificationType.ORDER,
+                "维修已完成，待确认",
+                "您的报修单 " + order.getOrderNo() + " 已维修完成，请确认并评价。",
+                order.getId());
+    }
+
+    @Override
+    public RepairerStatsVO repairerStats() {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        User user = userMapper.selectById(current.getUserId());
+        long processing = countByStatus(current.getUserId(), OrderStatus.PROCESSING);
+        long assigned = countByStatus(current.getUserId(), OrderStatus.ASSIGNED);
+        return RepairerStatsVO.builder()
+                .finishCount(user == null || user.getFinishCount() == null ? 0 : user.getFinishCount())
+                .rating(user == null ? null : user.getRating())
+                .processingCount(processing)
+                .assignedCount(assigned)
+                .build();
+    }
+
+    // ==================== 管理端 ====================
+
+    @Override
+    public PageResult<OrderVO> adminOrders(Page<?> page, OrderQuery query) {
+        LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
+                .eq(StringUtils.hasText(query.getStatus()), RepairOrder::getStatus, query.getStatus())
+                .eq(query.getCategoryId() != null, RepairOrder::getCategoryId, query.getCategoryId())
+                .ge(query.getStartTime() != null, RepairOrder::getCreatedAt, query.getStartTime())
+                .le(query.getEndTime() != null, RepairOrder::getCreatedAt, query.getEndTime())
+                .and(StringUtils.hasText(query.getKeyword()),
+                        w -> w.like(RepairOrder::getOrderNo, query.getKeyword())
+                                .or()
+                                .like(RepairOrder::getTitle, query.getKeyword()))
+                .orderByDesc(RepairOrder::getCreatedAt);
+        Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
+        return PageResult.from(result.convert(this::toVO));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void assign(Long id, AssignRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.ASSIGNED);
+        User repairer = requireRepairer(request.getRepairerId());
+
+        transition(order, OrderStatus.ASSIGNED,
+                new UpdateWrapper<RepairOrder>()
+                        .set("repairer_id", repairer.getId())
+                        .set("assign_time", LocalDateTime.now()));
+        recordLog(order.getId(), current, "ASSIGN", OrderStatus.PENDING, OrderStatus.ASSIGNED,
+                "派单给师傅：" + displayName(repairer));
+
+        notifyService.notify(repairer.getId(), NotificationType.ORDER,
+                "新工单待接单",
+                "您被指派维修工单：单号 " + order.getOrderNo() + "，《" + order.getTitle() + "》"
+                        + (StringUtils.hasText(order.getAddress()) ? "，地址：" + order.getAddress() : "") + "。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reassign(Long id, ReassignRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.ASSIGNED);
+        if (order.getRepairerId() == null) {
+            // 拒单回到 PENDING 后走 assign 而非 reassign；此处防御
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+        if (order.getRepairerId().equals(request.getRepairerId())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "新师傅不能与现任师傅相同");
+        }
+        User newRepairer = requireRepairer(request.getRepairerId());
+        Long oldRepairerId = order.getRepairerId();
+        String fromStatus = order.getStatus();
+
+        transition(order, OrderStatus.ASSIGNED,
+                new UpdateWrapper<RepairOrder>()
+                        .set("repairer_id", newRepairer.getId())
+                        .set("assign_time", LocalDateTime.now())
+                        .set("accept_time", null));
+        recordLog(order.getId(), current, "ASSIGN", fromStatus, OrderStatus.ASSIGNED,
+                "改派：由师傅 " + (oldRepairerId == null ? "-" : displayName(userMapper.selectById(oldRepairerId)))
+                        + " 改为 " + displayName(newRepairer));
+
+        notifyService.notify(newRepairer.getId(), NotificationType.ORDER,
+                "新工单待接单",
+                "您被指派维修工单：单号 " + order.getOrderNo() + "，《" + order.getTitle() + "》。",
+                order.getId());
+        notifyService.notify(oldRepairerId, NotificationType.ORDER,
+                "工单已改派",
+                "单号 " + order.getOrderNo() + " 已改派给其他师傅，无需继续处理。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectByAdmin(Long id, ReasonRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.REJECTED);
+
+        transition(order, OrderStatus.REJECTED,
+                new UpdateWrapper<RepairOrder>().set("reject_reason", request.getReason()));
+        recordLog(order.getId(), current, "REJECT", OrderStatus.PENDING, OrderStatus.REJECTED,
+                "管理员驳回：" + request.getReason());
+
+        notifyService.notify(order.getReporterId(), NotificationType.ORDER,
+                "报修单被驳回",
+                "您的报修单 " + order.getOrderNo() + " 被驳回，原因：" + request.getReason() + "。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelByAdmin(Long id, ReasonRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.CANCELLED);
+        String fromStatus = order.getStatus();
+
+        transition(order, OrderStatus.CANCELLED,
+                new UpdateWrapper<RepairOrder>().set("cancel_reason", request.getReason()));
+        recordLog(order.getId(), current, "CANCEL", fromStatus, OrderStatus.CANCELLED,
+                "管理员取消：" + request.getReason());
+
+        notifyService.notify(order.getReporterId(), NotificationType.ORDER,
+                "工单已被取消",
+                "您的报修单 " + order.getOrderNo() + " 已被管理员取消，原因：" + request.getReason() + "。",
+                order.getId());
+        if (order.getRepairerId() != null) {
+            notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                    "工单已被取消",
+                    "您负责的工单 " + order.getOrderNo() + " 已被管理员取消。",
+                    order.getId());
+        }
+    }
+
+    // ==================== 内部工具方法 ====================
+
+    /** 普通读取（无锁） */
+    private RepairOrder getOrder(Long id) {
+        RepairOrder order = repairOrderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_FOUND);
+        }
+        return order;
+    }
+
+    /** 行锁读取：状态流转入口，防并发重复操作 */
+    private RepairOrder lockOrder(Long id) {
+        RepairOrder order = repairOrderMapper.selectByIdForUpdate(id);
+        if (order == null) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_FOUND);
+        }
+        return order;
+    }
+
+    /**
+     * 条件更新工单状态（extra 为额外的 set 列）。
+     * 带 status=当前值 条件：即使行锁已持有，条件更新仍是第二道保险，
+     * 影响行数 != 1 即抛「当前状态不允许该操作」。
+     */
+    private void transition(RepairOrder order, String target, UpdateWrapper<RepairOrder> extra) {
+        UpdateWrapper<RepairOrder> wrapper = extra == null ? new UpdateWrapper<>() : extra;
+        wrapper.eq("id", order.getId())
+                .eq("status", order.getStatus())
+                .eq("deleted", 0)
+                .set("status", target)
+                .set("updated_at", LocalDateTime.now());
+        int rows = repairOrderMapper.update(null, wrapper);
+        if (rows != 1) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+        order.setStatus(target);
+    }
+
+    private void recordLog(Long orderId, LoginUser operator, String action,
+                           String fromStatus, String toStatus, String remark) {
+        OrderLog log = new OrderLog();
+        log.setOrderId(orderId);
+        log.setOperatorId(operator.getUserId());
+        log.setOperatorRole(operator.getRole());
+        log.setAction(action);
+        log.setFromStatus(fromStatus);
+        log.setToStatus(toStatus);
+        log.setRemark(remark);
+        orderLogMapper.insert(log);
+    }
+
+    /** 校验操作人是工单报修人（非本人 403） */
+    private void requireReporter(RepairOrder order, LoginUser current) {
+        if (!order.getReporterId().equals(current.getUserId())) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_OWNED);
+        }
+    }
+
+    /** 校验操作人是被指派的师傅（非本人 403） */
+    private void requireRepairerOfOrder(RepairOrder order, LoginUser current) {
+        if (order.getRepairerId() == null || !order.getRepairerId().equals(current.getUserId())) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_OWNED);
+        }
+    }
+
+    /** 详情查看权限：报修人 / 被派师傅 / 管理员 */
+    private void requireViewPermission(RepairOrder order, LoginUser current) {
+        boolean allowed = order.getReporterId().equals(current.getUserId())
+                || (order.getRepairerId() != null && order.getRepairerId().equals(current.getUserId()))
+                || RoleEnum.ADMIN.equals(current.getRole());
+        if (!allowed) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_OWNED);
+        }
+    }
+
+    /** 校验师傅存在、角色为 REPAIRER 且启用 */
+    private User requireRepairer(Long repairerId) {
+        User user = userMapper.selectById(repairerId);
+        if (user == null || !RoleEnum.REPAIRER.equals(user.getRole())
+                || user.getStatus() == null || user.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.REPAIRER_INVALID);
+        }
+        return user;
+    }
+
+    private List<Long> listEnabledUserIds(String role) {
+        List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
+                .eq(User::getRole, role)
+                .eq(User::getStatus, 1));
+        return users.stream().map(User::getId).toList();
+    }
+
+    private long countByStatus(Long repairerId, String status) {
+        return repairOrderMapper.selectCount(new LambdaQueryWrapper<RepairOrder>()
+                .eq(RepairOrder::getRepairerId, repairerId)
+                .eq(RepairOrder::getStatus, status));
+    }
+
+    private BigDecimal avgRating(Long repairerId) {
+        List<RepairOrder> rated = repairOrderMapper.selectList(new LambdaQueryWrapper<RepairOrder>()
+                .eq(RepairOrder::getRepairerId, repairerId)
+                .isNotNull(RepairOrder::getRating));
+        if (rated.isEmpty()) {
+            return null;
+        }
+        BigDecimal sum = rated.stream()
+                .map(RepairOrder::getRating)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return sum.divide(BigDecimal.valueOf(rated.size()), 1, java.math.RoundingMode.HALF_UP);
+    }
+
+    private String categoryName(Long categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        Category category = null;
+        try {
+            category = categoryService.getEnabledById(categoryId);
+        } catch (BusinessException ignored) {
+            // 分类被停用后详情仍可展示原分类名；兜底返回 null
+        }
+        return category == null ? null : category.getName();
+    }
+
+    private String displayName(User user) {
+        if (user == null) {
+            return null;
+        }
+        return StringUtils.hasText(user.getRealName()) ? user.getRealName() : user.getUsername();
+    }
+
+    /** 批量查用户名映射（real_name 优先） */
+    private Map<Long, String> userNames(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<Long> distinct = ids.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (distinct.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userMapper.selectBatchIds(distinct).stream()
+                .collect(Collectors.toMap(User::getId, this::displayName, (a, b) -> a, HashMap::new));
+    }
+
+    /** 单个工单转列表 VO（批量补全名称） */
+    private OrderVO toVO(RepairOrder order) {
+        Map<Long, String> users = userNames(java.util.List.of(order.getReporterId(), order.getRepairerId()));
+        return OrderVO.from(order,
+                users.get(order.getReporterId()),
+                categoryName(order.getCategoryId()),
+                users.get(order.getRepairerId()));
+    }
+}
