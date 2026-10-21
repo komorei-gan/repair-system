@@ -1,0 +1,95 @@
+/**
+ * 后端接口类型定义（与 design.md / 后端 DTO 一一对应）。
+ */
+
+/** 统一返回结构：code 与 HTTP 状态一致，200 成功 */
+export interface Result<T = unknown> {
+  code: number
+  msg: string
+  data: T
+}
+
+/** 统一分页返回结构 */
+export interface PageResult<T> {
+  records: T[]
+  total: number
+  pageNum: number
+  pageSize: number
+}
+
+/** 用户信息视图（不含 password） */
+export interface UserInfo {
+  id: number
+  username: string
+  realName: string | null
+  phone: string | null
+  /** 角色：ADMIN 管理员 / REPAIRER 师傅 / REPORTER 报修人 */
+  role: 'ADMIN' | 'REPAIRER' | 'REPORTER'
+  avatar: string | null
+}
+
+/** 登录响应：token + 用户信息 */
+export interface LoginResponse {
+  token: string
+  user: UserInfo
+}
+
+/** 工单列表视图（列表页不含 description/images 大字段） */
+export interface OrderVO {
+  id: number
+  orderNo: string
+  reporterId: number
+  reporterName: string
+  categoryId: number
+  categoryName: string
+  title: string
+  address: string
+  contactPhone: string
+  status: OrderStatus
+  repairerId: number | null
+  repairerName: string | null
+  assignTime: string | null
+  acceptTime: string | null
+  finishTime: string | null
+  confirmTime: string | null
+  rating: number | null
+  remindCount: number
+  createdAt: string
+}
+
+/** 工单状态（design.md §1.1） */
+export type OrderStatus =
+  | 'PENDING'
+  | 'ASSIGNED'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'CONFIRMED'
+  | 'CANCELLED'
+  | 'REJECTED'
+
+/** 通知视图 */
+export interface NotificationVO {
+  id: number
+  /** ORDER 工单通知 / SYSTEM 系统通知 */
+  type: 'ORDER' | 'SYSTEM'
+  title: string
+  content: string
+  orderId: number | null
+  isRead: 0 | 1
+  readTime: string | null
+  createdAt: string
+}
+
+/** 未读数响应 */
+export interface UnreadCountVO {
+  unreadCount: number
+}
+
+/** 故障分类 */
+export interface Category {
+  id: number
+  name: string
+  sort: number
+  status: number
+  createdAt: string
+}

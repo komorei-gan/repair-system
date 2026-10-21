@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>校园易修 · 数据看板</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231890FF'/%3E%3Cpath d='M21 10a4 4 0 0 0-5 5l-6 6 2 2 6-6a4 4 0 0 0 5-5l-2.5 2.5-2-2L21 10z' fill='white'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   CampusFix Admin · Design tokens
+   主色 科技蓝 #1890FF / 正向 环保绿 #52C41A
+   ============================================================ */
+:root{
+  --blue-50:#EAF4FF;
+  --blue-100:#D6E9FF;
+  --blue-200:#AFD3FF;
+  --blue-500:#1890FF;
+  --blue-600:#0E7BE0;
+  --blue-700:#0A63B8;
+  --green-50:#EEFBEA;
+  --green-100:#DEF7D6;
+  --green-500:#52C41A;
+  --green-600:#3FA510;
+  --green-700:#2E7D0B;
+  --amber-50:#FFF7E6;
+  --amber-500:#FAAD14;
+  --amber-600:#B26B00;
+  --red-50:#FFF1F0;
+  --red-500:#F5222D;
+
+  --ink:#0F2137;
+  --ink-2:#2C4661;
+  --muted:#5E7489;
+  --muted-2:#7E92A8;
+
+  --bg:#F2F6FC;
+  --surface:#FFFFFF;
+  --surface-2:#F8FBFF;
+  --line:#E4ECF6;
+  --line-strong:#D3E1F0;
+
+  --r-xl:18px;
+  --r-lg:16px;
+  --r-md:12px;
+  --r-sm:9px;
+  --r-pill:999px;
+
+  --shadow-xs:0 1px 2px rgba(15,42,74,.04);
+  --shadow-card:0 1px 2px rgba(15,42,74,.03), 0 18px 36px -30px rgba(10,42,80,.35);
+  --shadow-pop:0 24px 50px -22px rgba(10,35,66,.3);
+  --ring:0 0 0 4px rgba(24,144,255,.14);
+
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body,h1,h2,h3,p,figure,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
+button{font:inherit;color:inherit}
+input,select{font:inherit}
+button,input,select,a{-webkit-tap-highlight-color:transparent}
+a{color:inherit;text-decoration:none}
+svg{display:block}
+
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  font-size:14px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    radial-gradient(820px 460px at 88% -12%, rgba(24,144,255,.10), transparent 62%),
+    radial-gradient(620px 420px at -8% 18%, rgba(82,196,26,.055), transparent 58%),
+    radial-gradient(700px 500px at 60% 108%, rgba(24,144,255,.05), transparent 60%);
+}
+::selection{background:rgba(24,144,255,.18);color:var(--ink)}
+:focus-visible{outline:2px solid var(--blue-500);outline-offset:2px}
+
+.ico{
+  width:18px;height:18px;flex:none;
+  fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+.num{font-feature-settings:"tnum" 1,"ss01" 1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* ============================ Layout ============================ */
+html,body{max-width:100%;overflow-x:hidden}
+.app{min-height:100vh}
+.shell{margin-left:240px;min-height:100vh;min-width:0;display:flex;flex-direction:column;transition:margin-left .3s var(--ease)}
+
+/* ============================ Sidebar ============================ */
+.sidebar{
+  position:fixed;inset:0 auto 0 0;z-index:100;
+  width:240px;
+  display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#FFFFFF 0%,#FCFEFF 58%,#F8FBFF 100%);
+  border-right:1px solid var(--line);
+  transition:transform .3s var(--ease),width .3s var(--ease);
+}
+.sidebar::after{
+  content:"";position:absolute;inset:0 0 auto 0;height:180px;z-index:-1;
+  background:radial-gradient(220px 120px at 20% 0%, rgba(24,144,255,.09), transparent 70%);
+  pointer-events:none;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:22px 20px 18px;flex:none}
+.brand-mark{
+  width:38px;height:38px;flex:none;border-radius:11px;
+  display:grid;place-items:center;
+  color:#fff;
+  background:linear-gradient(145deg,#4AABFF 0%,#1890FF 48%,#0B6FD0 100%);
+  box-shadow:0 8px 18px -8px rgba(24,144,255,.85), inset 0 1px 0 rgba(255,255,255,.4);
+  position:relative;
+}
+.brand-mark::after{
+  content:"";position:absolute;inset:1px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.22);
+  pointer-events:none;
+}
+.brand-mark .ico{width:21px;height:21px;stroke-width:2}
+.brand-text{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand-text b{font-size:15.5px;font-weight:700;letter-spacing:.01em}
+.brand-text span{font-size:9px;font-weight:600;letter-spacing:.18em;color:var(--muted-2);margin-top:4px;white-space:nowrap}
+
+.nav{flex:1;min-height:0;overflow-y:auto;padding:4px 12px 8px;scrollbar-width:thin;scrollbar-color:#DCE7F3 transparent}
+.nav::-webkit-scrollbar{width:5px}
+.nav::-webkit-scrollbar-thumb{background:#E0EAF5;border-radius:99px}
+.nav-label{
+  font-size:10.5px;font-weight:600;letter-spacing:.12em;
+  color:#6B8095;padding:16px 12px 7px;
+}
+.nav-item{
+  position:relative;
+  display:flex;align-items:center;gap:11px;
+  width:100%;padding:9px 12px;margin:2px 0;
+  border:0;background:transparent;border-radius:10px;
+  font-size:13.5px;font-weight:500;color:#4B637B;
+  text-align:left;cursor:pointer;
+  transition:background .18s,color .18s,box-shadow .18s;
+}
+.nav-item .ico{width:18px;height:18px;color:#7A90A8;transition:color .18s}
+.nav-item:hover{background:#F2F8FF;color:var(--blue-700)}
+.nav-item:hover .ico{color:var(--blue-500)}
+.nav-item.active{
+  color:var(--blue-700);font-weight:600;
+  background:linear-gradient(90deg,#E9F4FF 0%,#F6FAFF 100%);
+  box-shadow:inset 0 0 0 1px #D8EAFF;
+}
+.nav-item.active .ico{color:var(--blue-500)}
+.nav-item.active::before{
+  content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:17px;border-radius:0 3px 3px 0;background:var(--blue-500);
+}
+.nav-item .label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:19px;height:18px;padding:0 6px;border-radius:6px;
+  font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;
+  background:var(--red-50);color:#E5484D;
+}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--blue-500);box-shadow:0 0 0 3px rgba(24,144,255,.13);flex:none}
+.side-foot{flex:none;padding:12px 14px 16px}
+.sys-card{
+  padding:12px 13px;border:1px solid #E1EDFA;border-radius:12px;
+  background:linear-gradient(160deg,#F7FBFF 0%,#F1F8FF 100%);
+}
+.sys-row{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;color:#3E6284}
+.sys-ping{margin-left:auto;font-size:10.5px;color:var(--green-700);background:var(--green-50);padding:1px 6px;border-radius:5px;font-weight:600}
+.status-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--green-500);flex:none;
+  box-shadow:0 0 0 3px rgba(82,196,26,.16);
+  animation:breathe 2.8s ease-in-out infinite;
+}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 3px rgba(82,196,26,.16)}50%{box-shadow:0 0 0 5px rgba(82,196,26,.06)}}
+.sys-card p{font-size:10.5px;color:#7C93A9;margin-top:6px}
+.sys-bar{height:3px;border-radius:99px;background:#E3EEF9;margin-top:9px;overflow:hidden}
+.sys-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--green-500),#86D95F)}
+.side-version{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6B8095;padding:10px 4px 0}
+.side-version span{font-variant-numeric:tabular-nums}
+
+/* ============================ Topbar ============================ */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  height:66px;flex:none;
+  display:flex;align-items:center;gap:16px;
+  padding:0 30px;
+  background:rgba(255,255,255,.82);
+  backdrop-filter:blur(16px) saturate(1.25);
+  -webkit-backdrop-filter:blur(16px) saturate(1.25);
+  border-bottom:1px solid var(--line);
+}
+.menu-btn{display:none}
+.icon-btn{
+  position:relative;
+  width:38px;height:38px;flex:none;
+  display:inline-grid;place-items:center;
+  border:1px solid transparent;border-radius:11px;
+  background:transparent;color:#5A728A;cursor:pointer;
+  transition:background .18s,color .18s,border-color .18s;
+}
+.icon-btn:hover{background:#F2F7FD;border-color:#E6EFF9;color:var(--blue-700)}
+.icon-btn .ico{width:19px;height:19px}
+
+.crumb{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted-2);white-space:nowrap}
+.crumb .ico{width:13px;height:13px;color:#B3C3D3}
+.crumb strong{color:var(--ink-2);font-weight:600}
+.crumb .sep{color:#C3D1DF}
+
+.topbar-search{position:relative;flex:1;max-width:360px;margin-left:8px}
+.topbar-search .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#8FA3B8;pointer-events:none}
+.topbar-search input{
+  width:100%;height:38px;padding:0 44px 0 35px;
+  border:1px solid var(--line-strong);border-radius:10px;
+  background:#F8FBFF;color:var(--ink);font-size:13px;
+  transition:border-color .18s,background .18s,box-shadow .18s;
+}
+.topbar-search input::placeholder{color:#9AAEC2}
+.topbar-search input:focus{outline:none;border-color:var(--blue-500);background:#fff;box-shadow:var(--ring)}
+.topbar-search kbd{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  font-family:inherit;font-size:11px;color:#93A7BB;
+  border:1px solid #E3ECF6;background:#fff;border-radius:5px;
+  min-width:20px;height:20px;display:grid;place-items:center;line-height:1;
+}
+.topbar-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+.topbar-divider{width:1px;height:24px;background:var(--line);margin:0 8px}
+
+/* notification */
+.notif-wrap{position:relative}
+.bell-badge{
+  position:absolute;top:5px;right:4px;
+  min-width:17px;height:17px;padding:0 4px;
+  display:grid;place-items:center;
+  font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:#fff;background:linear-gradient(180deg,#FF6B6B,#F5222D);
+  border:2px solid #fff;border-radius:99px;
+  box-shadow:0 3px 8px -3px rgba(245,34,45,.8);
+}
+.bell-badge.is-hidden{display:none}
+.notif-panel{
+  position:absolute;top:calc(100% + 13px);right:-2px;z-index:80;
+  width:364px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow-pop);
+  opacity:0;visibility:hidden;transform:translateY(-7px) scale(.985);
+  transform-origin:top right;
+  transition:opacity .18s var(--ease),transform .18s var(--ease),visibility .18s;
+  overflow:visible;
+}
+.notif-panel::before{
+  content:"";position:absolute;top:-6px;right:19px;width:10px;height:10px;
+  background:#fff;border-left:1px solid var(--line);border-top:1px solid var(--line);
+  transform:rotate(45deg);border-radius:2px 0 0 0;
+}
+.notif-panel.is-open{opacity:1;visibility:visible;transform:none}
+.notif-head{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 16px 12px;border-bottom:1px solid #F1F6FC;
+}
+.notif-head h3{font-size:14px;font-weight:700;letter-spacing:-.01em}
+.notif-head .count-chip{
+  font-size:10.5px;font-weight:600;color:var(--blue-700);
+  background:var(--blue-50);padding:1px 7px;border-radius:6px;
+}
+.notif-head button{
+  margin-left:auto;border:0;background:none;cursor:pointer;
+  font-size:11.5px;font-weight:600;color:var(--blue-600);padding:2px 4px;border-radius:5px;
+}
+.notif-head button:hover{color:var(--blue-700);background:#F2F8FF}
+.notif-head button.is-done{color:var(--muted-2);cursor:default}
+.notif-scroll{max-height:302px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#DEE9F4 transparent}
+.notif-scroll::-webkit-scrollbar{width:5px}
+.notif-scroll::-webkit-scrollbar-thumb{background:#E2EBF5;border-radius:99px}
+.notif-item{
+  position:relative;display:flex;gap:11px;
+  padding:13px 18px 13px 16px;
+  border-bottom:1px solid #F4F8FD;
+  cursor:pointer;transition:background .16s;
+}
+.notif-item:last-child{border-bottom:0}
+.notif-item:hover{background:#F8FBFF}
+.notif-item.unread{background:linear-gradient(90deg,#F6FAFF 0%,#FFFFFF 72%)}
+.notif-item.unread:hover{background:#F5FAFF}
+.notif-ico{
+  width:32px;height:32px;flex:none;border-radius:10px;
+  display:grid;place-items:center;
+}
+.notif-ico .ico{width:16px;height:16px}
+.notif-ico.blue{background:var(--blue-50);color:var(--blue-600)}
+.notif-ico.green{background:var(--green-50);color:var(--green-600)}
+.notif-ico.amber{background:var(--amber-50);color:var(--amber-600)}
+.notif-ico.slate{background:#F0F5FB;color:#5E7A96}
+.notif-body{min-width:0;flex:1}
+.notif-body b{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.45;padding-right:14px}
+.notif-body p{
+  font-size:11.5px;color:#6B8096;margin-top:2px;line-height:1.5;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;
+}
+.notif-body time{display:block;font-size:10.5px;color:#6B8095;margin-top:4px;font-variant-numeric:tabular-nums}
+.notif-dot{position:absolute;right:16px;top:17px;width:6px;height:6px;border-radius:50%;background:var(--blue-500)}
+.notif-foot{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:10px;border-top:1px solid #F1F6FC;
+  font-size:12px;font-weight:600;color:var(--blue-600);cursor:pointer;
+  border-radius:0 0 13px 13px;transition:background .16s;
+}
+.notif-foot:hover{background:#F7FBFF}
+.notif-foot .ico{width:14px;height:14px}
+
+/* profile */
+.profile{
+  display:flex;align-items:center;gap:9px;
+  padding:4px 6px 4px 4px;margin-left:4px;
+  border:1px solid transparent;border-radius:11px;
+  background:none;cursor:pointer;text-align:left;
+  transition:background .18s,border-color .18s;
+}
+.profile:hover{background:#F7FAFE;border-color:#EAF2FA}
+.avatar-lg{
+  width:34px;height:34px;flex:none;border-radius:10px;
+  display:grid;place-items:center;
+  font-size:12.5px;font-weight:700;color:#fff;
+  background:linear-gradient(140deg,#5FB3FF,#0E7BE0);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 10px -6px rgba(14,123,224,.8);
+}
+.profile-meta{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.profile-meta b{font-size:12.5px;font-weight:600;color:var(--ink)}
+.profile-meta span{font-size:10.5px;color:var(--muted-2);white-space:nowrap}
+.profile .ico{width:14px;height:14px;color:#A5B7C9}
+
+/* ============================ Main ============================ */
+.main{flex:1;padding:26px 30px 34px;max-width:1680px;width:100%;min-width:0}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;flex-wrap:wrap;margin-bottom:22px}
+.page-head h1{
+  font-size:26px;font-weight:700;letter-spacing:-.025em;line-height:1.2;
+  color:var(--ink);display:flex;align-items:center;gap:10px;
+}
+.live-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  height:22px;padding:0 8px;border-radius:6px;
+  font-size:10.5px;font-weight:600;letter-spacing:.02em;
+  color:var(--green-700);background:var(--green-50);border:1px solid #DDF4D2;
+}
+.live-chip i{width:5px;height:5px;border-radius:50%;background:var(--green-500);box-shadow:0 0 0 3px rgba(82,196,26,.14)}
+.page-sub{font-size:13px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:7px}
+.page-sub .sep{color:#C6D4E2}
+.page-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  height:38px;padding:0 15px;border-radius:10px;
+  border:1px solid transparent;background:transparent;
+  font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;
+  transition:transform .18s var(--ease),box-shadow .18s,background .18s,border-color .18s,color .18s;
+}
+.btn .ico{width:15px;height:15px}
+.btn-primary{
+  color:#fff;
+  background:linear-gradient(180deg,#35A0FF 0%,#1890FF 55%,#0F7EE4 100%);
+  box-shadow:0 8px 18px -10px rgba(24,144,255,.95),inset 0 1px 0 rgba(255,255,255,.28);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 12px 22px -10px rgba(24,144,255,.9),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn-primary:active{transform:translateY(0)}
+.btn-ghost{background:#fff;border-color:var(--line-strong);color:#3E5872;box-shadow:var(--shadow-xs)}
+.btn-ghost:hover{border-color:var(--blue-200);color:var(--blue-700);background:#F8FCFF}
+.btn-icon{width:38px;padding:0}
+
+.seg{display:inline-flex;align-items:center;gap:2px;padding:3px;background:#EAF1F9;border-radius:10px}
+.seg button{
+  height:30px;padding:0 13px;border:0;border-radius:8px;
+  background:transparent;color:#57708A;font-size:12.5px;font-weight:500;cursor:pointer;
+  transition:background .18s,color .18s,box-shadow .18s;
+}
+.seg button:hover{color:var(--ink-2)}
+.seg button[aria-selected="true"]{
+  background:#fff;color:var(--ink);font-weight:600;
+  box-shadow:0 1px 3px rgba(15,42,74,.14);
+}
+.seg.mini{padding:2px;border-radius:9px;background:#F0F5FB}
+.seg.mini button{height:26px;padding:0 10px;font-size:11.5px;border-radius:7px}
+
+/* ============================ Stat cards ============================ */
+.stats{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;
+  margin-bottom:18px;
+}
+.stat-card{
+  position:relative;overflow:hidden;
+  padding:19px 20px 17px;
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  background:var(--surface);
+  box-shadow:var(--shadow-card);
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease),border-color .25s;
+  animation:rise .55s var(--ease) both;
+}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 18px 34px -26px rgba(10,42,80,.4);border-color:#DCE9F6}
+.stat-card:nth-child(2){animation-delay:.05s}
+.stat-card:nth-child(3){animation-delay:.1s}
+.stat-card:nth-child(4){animation-delay:.15s}
+.stat-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.stat-label{font-size:12.5px;font-weight:500;color:var(--muted);padding-top:3px;letter-spacing:.01em}
+.icon-tile{
+  width:38px;height:38px;flex:none;border-radius:11px;
+  display:grid;place-items:center;
+  box-shadow:inset 0 0 0 1px rgba(15,42,74,.03);
+}
+.icon-tile .ico{width:19px;height:19px;stroke-width:1.9}
+.icon-tile.blue{background:linear-gradient(150deg,#EAF4FF,#DAEBFF);color:var(--blue-600)}
+.icon-tile.amber{background:linear-gradient(150deg,#FFF7E6,#FFEDCC);color:var(--amber-600)}
+.icon-tile.green{background:linear-gradient(150deg,#F0FBEA,#E2F8D8);color:var(--green-600)}
+.icon-tile.slate{background:linear-gradient(150deg,#F1F6FC,#E7EFF9);color:#4C6C8A}
+.stat-value{
+  display:flex;align-items:baseline;gap:5px;
+  font-size:33px;font-weight:700;line-height:1.1;letter-spacing:-.03em;
+  color:var(--ink);margin:11px 0 0;
+}
+.stat-value .unit{font-size:12.5px;font-weight:500;color:var(--muted-2);letter-spacing:0}
+.stat-value .pct{font-size:18px;font-weight:600;color:var(--muted);letter-spacing:-.02em;margin-left:-3px}
+.stat-foot{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11.5px;color:#7B8FA5;white-space:nowrap}
+.delta{display:inline-flex;align-items:center;gap:2px;font-weight:600;font-size:11px;padding:1px 6px;border-radius:5px;font-variant-numeric:tabular-nums}
+.delta .ico{width:11px;height:11px;stroke-width:2.4}
+.delta.up{color:#A85B00;background:#FFF6E5}
+.delta.down{color:var(--green-700);background:var(--green-50)}
+.delta.flat{color:var(--blue-700);background:var(--blue-50)}
+.stat-card .foot-note{overflow:hidden;text-overflow:ellipsis}
+
+/* featured stat */
+.stat-card.is-featured{
+  border-color:#CFE4FF;
+  background:
+    radial-gradient(240px 160px at 108% -30%, rgba(24,144,255,.22), transparent 70%),
+    linear-gradient(145deg,#EDF6FF 0%,#F7FBFF 52%,#FFFFFF 100%);
+}
+.stat-card.is-featured::before{
+  content:"";position:absolute;right:-38px;top:-46px;
+  width:128px;height:128px;border-radius:50%;
+  border:1px solid rgba(24,144,255,.16);
+}
+.stat-card.is-featured::after{
+  content:"";position:absolute;right:-16px;top:-24px;
+  width:86px;height:86px;border-radius:50%;
+  border:1px solid rgba(24,144,255,.12);
+}
+.stat-card.is-featured .stat-label{color:#3B6E9C;font-weight:600}
+.stat-card.is-featured .icon-tile{
+  background:linear-gradient(150deg,#4FADFF,#168DFB);
+  color:#fff;box-shadow:0 8px 18px -10px rgba(24,144,255,.9),inset 0 1px 0 rgba(255,255,255,.35);
+}
+.stat-card.is-featured .stat-value{color:#0B4E8C}
+.stat-card.is-featured .delta{background:#fff;color:#0A63B8;box-shadow:0 1px 2px rgba(24,144,255,.15)}
+.stat-card.is-featured .stat-foot{color:#5A7E9E}
+
+.progress-line{height:4px;border-radius:99px;background:#E9F5DF;margin-top:11px;overflow:hidden}
+.progress-line span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#7BD94B,#52C41A);position:relative}
+.progress-line span::after{
+  content:"";position:absolute;right:0;top:0;bottom:0;width:16px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.65));
+}
+
+/* ============================ Cards / charts ============================ */
+.insight-grid{
+  display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);
+  gap:18px;margin-bottom:18px;align-items:stretch;
+}
+.card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-card);
+}
+.chart-card,.status-card{padding:20px 22px 18px;display:flex;flex-direction:column;min-width:0}
+.insight-grid .card{animation:rise .55s .12s var(--ease) both}
+.status-card{animation-delay:.18s !important}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.card-head h2{font-size:16px;font-weight:700;letter-spacing:-.015em;line-height:1.35;display:flex;align-items:center;gap:8px}
+.card-head p{font-size:11.5px;color:var(--muted);margin-top:2px}
+.legend-row{display:flex;align-items:center;gap:16px;margin:13px 0 4px;font-size:11.5px;color:#5C7288}
+.legend{display:inline-flex;align-items:center;gap:6px}
+.legend .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.legend .dot.blue{background:var(--blue-500);box-shadow:0 0 0 3px rgba(24,144,255,.13)}
+.legend .dot.green{background:var(--green-500);box-shadow:0 0 0 3px rgba(82,196,26,.14)}
+.legend-note{margin-left:auto;color:#6B8095;font-size:10.5px}
+.chart-wrap{margin-top:auto;padding-top:4px}
+.chart-svg{width:100%;height:auto;overflow:visible}
+.chart-svg text{font-family:inherit;font-size:10.5px;fill:#93A7BB}
+.chart-svg .grid-line{stroke:#ECF3FA;stroke-width:1}
+.chart-svg .axis-line{stroke:#DDE9F5;stroke-width:1}
+.chart-svg .tick{fill:#8FA3B8}
+.chart-svg .line-new{fill:none;stroke:var(--blue-500);stroke-width:2.6;stroke-linecap:round}
+.chart-svg .line-done{fill:none;stroke:var(--green-500);stroke-width:2.2;stroke-linecap:round;stroke-opacity:.95}
+.chart-svg .end-dot{fill:#fff;stroke-width:2.4}
+.chart-svg .guide{stroke:#BBD6F0;stroke-dasharray:3 4;stroke-width:1}
+.chart-tip rect{fill:#102B47}
+.chart-tip text{fill:#fff;font-size:10.5px;font-weight:600}
+
+/* donut */
+.status-card .card-head .chip{
+  font-size:10.5px;font-weight:600;color:#5E7B96;
+  background:#F3F7FC;border:1px solid #E8F0F9;
+  padding:3px 8px;border-radius:6px;white-space:nowrap;
+}
+.donut-wrap{
+  position:relative;width:196px;height:196px;margin:8px auto 0;flex:none;
+}
+.donut-wrap svg{width:100%;height:100%}
+.donut-track{fill:none;stroke:#F2F7FC;stroke-width:14}
+.donut-seg{fill:none;stroke-width:14;transition:stroke-width .2s var(--ease),opacity .2s}
+.donut-seg:hover{stroke-width:17}
+.donut-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none;
+  padding-bottom:2px;
+}
+.donut-center strong{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--ink)}
+.donut-center span{font-size:10.5px;color:var(--muted-2);margin-top:5px;letter-spacing:.04em}
+.donut-center em{
+  font-style:normal;font-size:10.5px;font-weight:600;color:var(--green-700);
+  background:var(--green-50);padding:1px 7px;border-radius:5px;margin-top:8px;
+  font-variant-numeric:tabular-nums;
+}
+.status-list{
+  display:grid;grid-template-columns:1fr 1fr;gap:9px 16px;
+  margin-top:16px;padding-top:15px;border-top:1px dashed #E8F0F8;
+}
+.status-list li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#5D738A;min-width:0}
+.status-list .dot{width:7px;height:7px;border-radius:2px;flex:none}
+.status-list .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status-list b{margin-left:auto;font-size:12px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.status-list .pct{font-size:10.5px;color:#6B8095;font-variant-numeric:tabular-nums;min-width:32px;text-align:right}
+
+/* ============================ Table ============================ */
+.table-card{overflow:hidden;animation:rise .55s .2s var(--ease) both}
+.table-head{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:18px 22px 16px;
+}
+.table-head .title-wrap{min-width:0}
+.table-head h2{font-size:16px;font-weight:700;letter-spacing:-.015em;display:flex;align-items:center;gap:9px}
+.table-head p{font-size:11.5px;color:var(--muted);margin-top:2px}
+.table-head p b{color:var(--blue-700);font-weight:600;font-variant-numeric:tabular-nums}
+.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.search-field{position:relative}
+.search-field > .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#8FA3B8;pointer-events:none}
+.search-field input{
+  width:224px;height:38px;padding:0 13px 0 34px;
+  border:1px solid var(--line-strong);border-radius:10px;
+  background:#FAFDFF;font-size:12.5px;color:var(--ink);
+  transition:border-color .18s,background .18s,box-shadow .18s;
+}
+.search-field input::placeholder{color:#9AAEC2}
+.search-field input:focus{outline:none;border-color:var(--blue-500);background:#fff;box-shadow:var(--ring)}
+.select-btn{
+  height:38px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;
+  display:inline-flex;align-items:center;gap:7px;background:#fff;
+  font-size:12.5px;font-weight:500;color:#4C647C;cursor:pointer;white-space:nowrap;
+  transition:border-color .18s,color .18s,background .18s;
+}
+.select-btn:hover{border-color:var(--blue-200);color:var(--blue-700);background:#FAFDFF}
+.select-btn .ico{width:14px;height:14px;color:#93A7BB}
+.select-btn .ico:last-child{width:12px;height:12px;margin-left:-2px}
+.btn-sm{height:34px;padding:0 12px;font-size:12.5px;border-radius:9px;gap:6px}
+.btn-sm .ico{width:14px;height:14px}
+
+.tabs{display:flex;align-items:center;gap:2px;padding:0 16px;border-top:1px solid #F2F7FC;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  position:relative;display:inline-flex;align-items:center;gap:6px;
+  height:46px;padding:0 11px;border:0;background:none;cursor:pointer;
+  font-size:12.5px;font-weight:500;color:#5E7489;white-space:nowrap;
+  transition:color .18s;
+}
+.tab:hover{color:var(--blue-700)}
+.tab .count{
+  font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums;
+  padding:1px 6px;border-radius:5px;background:#F1F5FA;color:#73879C;
+  transition:background .18s,color .18s;
+}
+.tab[aria-selected="true"]{color:var(--blue-700);font-weight:600}
+.tab[aria-selected="true"] .count{background:var(--blue-50);color:var(--blue-700)}
+.tab[aria-selected="true"]::after{
+  content:"";position:absolute;left:9px;right:9px;bottom:-1px;height:2px;
+  border-radius:2px;background:var(--blue-500);
+}
+
+.table-wrap{overflow-x:auto}
+table{width:100%;min-width:1060px;border-collapse:collapse}
+thead th{
+  padding:10px 14px;text-align:left;font-size:10.5px;font-weight:600;
+  letter-spacing:.07em;color:#8298AE;background:#F8FBFF;
+  border-bottom:1px solid var(--line);white-space:nowrap;
+}
+thead th:first-child{padding-left:22px;width:46px}
+thead th:last-child{padding-right:22px;text-align:right}
+tbody td{
+  padding:14px;border-bottom:1px solid #F0F6FC;
+  vertical-align:middle;font-size:12.5px;color:#3E5872;
+}
+tbody td:first-child{padding-left:22px}
+tbody td:last-child{padding-right:22px;text-align:right}
+tbody tr{transition:background .16s}
+tbody tr:hover{background:#F8FBFF}
+tbody tr:last-child td{border-bottom:0}
+
+.check{display:inline-flex;align-items:center;cursor:pointer}
+.check input{
+  appearance:none;-webkit-appearance:none;
+  width:16px;height:16px;border:1.5px solid #C9D9E8;border-radius:5px;
+  background:#fff;cursor:pointer;transition:border-color .15s,background .15s;
+  position:relative;display:block;
+}
+.check input:hover{border-color:#8FBEF0}
+.check input:checked{background:var(--blue-500);border-color:var(--blue-500)}
+.check input:checked::after{
+  content:"";position:absolute;left:4.5px;top:1.5px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+
+.order-cell{min-width:250px}
+.order-no{
+  display:flex;align-items:center;gap:6px;
+  font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  font-size:10.5px;color:#6B8095;letter-spacing:.01em;line-height:1.4;
+}
+.order-no .tag-urgent{
+  font-family:inherit;font-size:9.5px;font-weight:600;letter-spacing:.02em;
+  color:#B25E00;background:#FFF4E3;border:1px solid #FFE2B8;
+  padding:0 4px;border-radius:3px;line-height:14px;
+}
+.order-title{
+  display:block;margin-top:3px;font-size:13px;font-weight:600;color:var(--ink-2);
+  line-height:1.45;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:color .16s;
+}
+tr:hover .order-title{color:var(--blue-700)}
+.order-addr{display:flex;align-items:center;gap:4px;margin-top:3px;font-size:10.5px;color:#6B8095;line-height:1.4}
+.order-addr .ico{width:11px;height:11px;stroke-width:1.9;flex:none}
+
+.cat{
+  display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;
+  border-radius:6px;background:#F6F9FD;border:1px solid #EDF3FA;
+  font-size:11.5px;color:#4F6A84;white-space:nowrap;
+}
+.cat i{width:5px;height:5px;border-radius:50%;flex:none}
+.cat.c-blue i{background:#1890FF}
+.cat.c-cyan i{background:#13C2C2}
+.cat.c-green i{background:#52C41A}
+.cat.c-amber i{background:#FAAD14}
+.cat.c-steel i{background:#6E8BA8}
+
+.person{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.avatar{
+  width:28px;height:28px;flex:none;border-radius:9px;
+  display:grid;place-items:center;font-size:11px;font-weight:600;color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28);
+}
+.av-1{background:linear-gradient(140deg,#66B6FF,#0E7BE0)}
+.av-2{background:linear-gradient(140deg,#59D8C8,#0FA396)}
+.av-3{background:linear-gradient(140deg,#95DD73,#4CAF17)}
+.av-4{background:linear-gradient(140deg,#FFC96B,#E79400)}
+.av-5{background:linear-gradient(140deg,#7FA9CC,#4C7391)}
+.person span{font-size:12.5px;color:#3E5872}
+.unassigned{
+  display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;
+  border:1px dashed #CFDDEB;border-radius:7px;font-size:11px;color:#93A7BB;
+  background:#FBFDFF;white-space:nowrap;
+}
+.unassigned .ico{width:11px;height:11px}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;height:25px;padding:0 9px;
+  border-radius:var(--r-pill);font-size:11.5px;font-weight:500;white-space:nowrap;
+}
+.pill .dot{width:5px;height:5px;border-radius:50%;flex:none}
+.pill.pending{background:#E9F4FF;color:#0A63B8}
+.pill.pending .dot{background:#1890FF;box-shadow:0 0 0 2.5px rgba(24,144,255,.14)}
+.pill.assigned{background:#F0F5FB;color:#4A6B8A}
+.pill.assigned .dot{background:#8AA9C4}
+.pill.processing{background:#FFF6E5;color:#A85B00}
+.pill.processing .dot{background:#FAAD14;box-shadow:0 0 0 2.5px rgba(250,173,20,.16)}
+.pill.completed{background:#F2FBEA;color:#427811}
+.pill.completed .dot{background:#73C22E}
+.pill.confirmed{background:#E9F9E2;color:#2E7D0B}
+.pill.confirmed .dot{background:#52C41A}
+.pill.cancelled{background:#F3F6FA;color:#6A7F94}
+.pill.cancelled .dot{background:#B9C8D6}
+
+.time-cell{white-space:nowrap;font-variant-numeric:tabular-nums;color:#4E6880;font-size:12px}
+.time-cell small{display:block;font-size:10.5px;color:#6B8095;margin-top:1px}
+
+.row-actions{display:inline-flex;align-items:center;gap:4px;justify-content:flex-end}
+.act{
+  height:30px;padding:0 9px;border:0;border-radius:8px;background:transparent;
+  font-size:12px;font-weight:500;color:#5E7489;cursor:pointer;white-space:nowrap;
+  transition:background .16s,color .16s,box-shadow .16s;
+}
+.act:hover{background:#F0F7FF;color:var(--blue-700)}
+.act-primary{background:var(--blue-50);color:var(--blue-700);font-weight:600}
+.act-primary:hover{background:var(--blue-500);color:#fff;box-shadow:0 7px 14px -8px rgba(24,144,255,.9)}
+.act .ico{width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:3px}
+
+.table-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:13px 22px;border-top:1px solid #F2F7FC;background:#FCFEFF;
+}
+.foot-info{font-size:11.5px;color:#7E92A8;font-variant-numeric:tabular-nums}
+.foot-info b{color:#415C76;font-weight:600}
+.pager{display:flex;align-items:center;gap:4px}
+.pager button{
+  min-width:30px;height:30px;padding:0 6px;
+  border:1px solid transparent;border-radius:8px;background:transparent;
+  font-size:12px;color:#5E7489;cursor:pointer;font-variant-numeric:tabular-nums;
+  transition:background .16s,border-color .16s,color .16s;
+  display:inline-grid;place-items:center;
+}
+.pager button:hover{background:#F2F8FF;color:var(--blue-700)}
+.pager button[aria-current="page"]{background:var(--blue-500);color:#fff;font-weight:600;box-shadow:0 5px 12px -7px rgba(24,144,255,.9)}
+.pager .ico{width:14px;height:14px}
+.pager .gap{color:#A5B6C8;font-size:11px;padding:0 2px}
+
+.page-foot{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:20px 0 2px;font-size:10.5px;color:#6B8095;letter-spacing:.01em;
+}
+.page-foot .dot{width:5px;height:5px;border-radius:50%;background:var(--green-500)}
+
+/* scrim for mobile nav */
+.scrim{
+  position:fixed;inset:0;z-index:99;background:rgba(12,32,55,.36);
+  backdrop-filter:blur(2px);
+  opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;
+}
+.scrim.is-open{opacity:1;visibility:visible}
+
+/* ============================ Animation ============================ */
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+
+/* ============================ Responsive ============================ */
+@media (max-width:1280px){
+  .stats{gap:14px}
+  .stat-card{padding:17px 17px 15px}
+  .stat-value{font-size:30px}
+  .main{padding:24px 24px 30px}
+  .topbar{padding:0 24px}
+}
+@media (max-width:1180px){
+  .sidebar{width:78px}
+  .shell{margin-left:78px}
+  .brand{padding:20px 0;justify-content:center}
+  .brand-text,
+  .nav-label,
+  .nav-badge,
+  .nav-dot,
+  .nav-item .label,
+  .side-foot{display:none}
+  .nav{padding:6px 10px}
+  .nav-item{justify-content:center;width:46px;height:44px;margin:4px auto;padding:0}
+  .nav-item.active::before{left:-8px}
+  .nav-item::after{display:none}
+  .insight-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+  .status-list{grid-template-columns:1fr}
+  .donut-wrap{width:178px;height:178px}
+}
+@media (max-width:1024px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .insight-grid{grid-template-columns:1fr}
+  .status-list{grid-template-columns:repeat(3,1fr)}
+  .donut-wrap{width:200px;height:200px}
+  .topbar-search{max-width:250px}
+  .topbar-search input{font-size:12.5px}
+}
+@media (max-width:860px){
+  .topbar-search{display:none}
+  .crumb{display:none}
+  .menu-btn{display:inline-grid}
+  .page-head h1{font-size:23px}
+}
+@media (max-width:780px){
+  .sidebar{
+    width:258px;transform:translateX(-100%);
+    box-shadow:26px 0 60px -30px rgba(8,30,55,.45);
+  }
+  .sidebar.is-open{transform:none}
+  .sidebar .brand{justify-content:flex-start;padding:20px 18px 16px}
+  .brand-text{display:flex}
+  .nav-label{display:block}
+  .nav-item{justify-content:flex-start;width:100%;height:auto;margin:2px 0;padding:9px 12px}
+  .nav-item .label{display:block}
+  .nav-badge{display:inline-flex}
+  .nav-dot{display:inline-block}
+  .nav-item.active::before{left:0}
+  .side-foot{display:block}
+  .nav{padding:4px 12px 8px}
+  .shell{margin-left:0}
+  .topbar{padding:0 16px;height:60px;gap:10px}
+  .topbar-divider{display:none}
+  .main{padding:18px 16px 26px}
+  .page-head{align-items:flex-start;gap:14px;margin-bottom:18px}
+  .page-sub{font-size:12px;flex-wrap:wrap;gap:5px}
+  .page-actions{width:100%}
+  .page-actions .seg{flex:1}
+  .page-actions .seg button{flex:1;padding:0 8px}
+  .stats{gap:12px}
+  .stat-value{font-size:27px}
+  .stat-label{font-size:11.5px}
+  .table-head{padding:16px}
+  .table-head .toolbar{width:100%}
+  .search-field{flex:1;min-width:170px}
+  .search-field input{width:100%}
+  .table-foot{padding:12px 16px;justify-content:center}
+  .foot-info{width:100%;text-align:center}
+  .profile-meta{display:none}
+  .profile{padding:3px}
+  .notif-panel{
+    position:fixed;top:66px;left:12px;right:12px;
+    width:auto;max-width:none;transform-origin:top center;
+  }
+  .notif-panel::before{display:none}
+  .notif-scroll{max-height:min(46vh,320px)}
+  .insight-grid{gap:12px}
+  .chart-card,.status-card{padding:16px}
+  .order-title{max-width:210px}
+  .status-list{grid-template-columns:1fr 1fr}
+}
+@media (max-width:520px){
+  .stats{grid-template-columns:1fr}
+  .stat-card{padding:16px}
+  .topbar-right .icon-btn[aria-label="帮助中心"]{display:none}
+  .page-head h1{font-size:21px}
+  .live-chip{display:none}
+  .table-head h2{font-size:15px}
+  .status-list{grid-template-columns:1fr}
+  .donut-wrap{width:180px;height:180px}
+  .btn{padding:0 12px}
+  .page-actions .btn-primary{flex:none}
+}
+@media (max-width:380px){
+  .seg button{padding:0 6px;font-size:11.5px}
+  .topbar{padding:0 12px}
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= SVG icon sprite ======================= -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.8"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.8"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1.2"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></symbol>
+  <symbol id="i-tags" viewBox="0 0 24 24"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l8.58-8.58a1 1 0 0 0 0-1.42L12 2Z"/><circle cx="7" cy="7" r="1.4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></symbol>
+  <symbol id="i-trending-up" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2.2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></symbol>
+</svg>
+
+<div class="app">
+
+  <!-- ======================= Sidebar ======================= -->
+  <aside class="sidebar" id="sidebar" aria-label="主导航">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg class="ico"><use href="#i-wrench"></use></svg>
+      </div>
+      <div class="brand-text">
+        <b>校园易修</b>
+        <span>CAMPUS FIX</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">概览</div>
+      <button type="button" class="nav-item active" aria-current="page" title="数据看板">
+        <svg class="ico" aria-hidden="true"><use href="#i-grid"></use></svg>
+        <span class="label">数据看板</span>
+      </button>
+
+      <div class="nav-label">工单管理</div>
+      <button type="button" class="nav-item" title="工单列表">
+        <svg class="ico" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        <span class="label">工单列表</span>
+        <span class="nav-badge">18</span>
+      </button>
+      <button type="button" class="nav-item" title="派单中心">
+        <svg class="ico" aria-hidden="true"><use href="#i-send"></use></svg>
+        <span class="label">派单中心</span>
+      </button>
+      <button type="button" class="nav-item" title="维修进度">
+        <svg class="ico" aria-hidden="true"><use href="#i-wrench"></use></svg>
+        <span class="label">维修进度</span>
+      </button>
+
+      <div class="nav-label">资源管理</div>
+      <button type="button" class="nav-item" title="维修师傅">
+        <svg class="ico" aria-hidden="true"><use href="#i-users"></use></svg>
+        <span class="label">维修师傅</span>
+      </button>
+      <button type="button" class="nav-item" title="用户管理">
+        <svg class="ico" aria-hidden="true"><use href="#i-user"></use></svg>
+        <span class="label">用户管理</span>
+      </button>
+      <button type="button" class="nav-item" title="故障分类">
+        <svg class="ico" aria-hidden="true"><use href="#i-tags"></use></svg>
+        <span class="label">故障分类</span>
+      </button>
+
+      <div class="nav-label">系统</div>
+      <button type="button" class="nav-item" title="通知中心">
+        <svg class="ico" aria-hidden="true"><use href="#i-bell"></use></svg>
+        <span class="label">通知中心</span>
+        <span class="nav-dot" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="nav-item" title="系统设置">
+        <svg class="ico" aria-hidden="true"><use href="#i-sliders"></use></svg>
+        <span class="label">系统设置</span>
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      <div class="sys-card">
+        <div class="sys-row">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>系统运行正常</span>
+          <span class="sys-ping">99.98%</span>
+        </div>
+        <p>通知轮询 · 30s 自动同步</p>
+        <div class="sys-bar" aria-hidden="true"><span style="width:99%;"></span></div>
+      </div>
+      <div class="side-version"><span>CampusFix Admin</span><span>v1.4.2</span></div>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <div class="shell">
+
+    <!-- ======================= Topbar ======================= -->
+    <header class="topbar">
+      <button type="button" class="icon-btn menu-btn" id="menuBtn" aria-label="打开导航" aria-controls="sidebar" aria-expanded="false">
+        <svg class="ico" aria-hidden="true"><use href="#i-menu"></use></svg>
+      </button>
+
+      <nav class="crumb" aria-label="面包屑">
+        <span>工作台</span>
+        <svg class="ico" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+        <strong>数据看板</strong>
+      </nav>
+
+      <div class="topbar-search">
+        <svg class="ico" aria-hidden="true"><use href="#i-search"></use></svg>
+        <input type="search" placeholder="搜索工单号 / 报修人 / 故障关键词" aria-label="搜索工单">
+        <kbd>/</kbd>
+      </div>
+
+      <div class="topbar-right">
+        <button type="button" class="icon-btn" aria-label="帮助中心">
+          <svg class="ico" aria-hidden="true"><use href="#i-help"></use></svg>
+        </button>
+
+        <div class="notif-wrap">
+          <button type="button" class="icon-btn" id="bellBtn" aria-label="消息通知，5 条未读" aria-expanded="false" aria-controls="notifPanel">
+            <svg class="ico" aria-hidden="true"><use href="#i-bell"></use></svg>
+            <span class="bell-badge" id="unreadBadge">5</span>
+          </button>
+
+          <div class="notif-panel" id="notifPanel" role="dialog" aria-label="消息通知">
+            <div class="notif-head">
+              <h3>消息通知</h3>
+              <span class="count-chip"><span id="unreadCount">5</span> 条未读</span>
+              <button type="button" id="markAll">全部已读</button>
+            </div>
+            <div class="notif-scroll">
+              <article class="notif-item unread">
+                <div class="notif-ico blue"><svg class="ico" aria-hidden="true"><use href="#i-clipboard"></use></svg></div>
+                <div class="notif-body">
+                  <b>新工单待受理</b>
+                  <p>3 号教学楼 402 · 投影仪无法开机</p>
+                  <time>2 分钟前</time>
+                </div>
+                <span class="notif-dot" aria-hidden="true"></span>
+              </article>
+              <article class="notif-item unread">
+                <div class="notif-ico green"><svg class="ico" aria-hidden="true"><use href="#i-user"></use></svg></div>
+                <div class="notif-body">
+                  <b>维修师傅已接单</b>
+                  <p>李伟民 已接单 RO20261021-017</p>
+                  <time>18 分钟前</time>
+                </div>
+                <span class="notif-dot" aria-hidden="true"></span>
+              </article>
+              <article class="notif-item unread">
+                <div class="notif-ico amber"><svg class="ico" aria-hidden="true"><use href="#i-bell"></use></svg></div>
+                <div class="notif-body">
+                  <b>报修人发起催单</b>
+                  <p>学生公寓 7 栋 512 · 卫生间水压过低</p>
+                  <time>46 分钟前</time>
+                </div>
+                <span class="notif-dot" aria-hidden="true"></span>
+              </article>
+              <article class="notif-item">
+                <div class="notif-ico slate"><svg class="ico" aria-hidden="true"><use href="#i-message"></use></svg></div>
+                <div class="notif-body">
+                  <b>本周维修及时率 96.2%</b>
+                  <p>已超过 95% 的服务目标值，继续保持</p>
+                  <time>2 小时前</time>
+                </div>
+              </article>
+            </div>
+            <div class="notif-foot">
+              查看全部通知
+              <svg class="ico" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-divider" aria-hidden="true"></div>
+
+        <button type="button" class="profile">
+          <span class="avatar-lg" aria-hidden="true">陈</span>
+          <span class="profile-meta">
+            <b>陈一鸣</b>
+            <span>后勤保障中心 · 管理员</span>
+          </span>
+          <svg class="ico" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ======================= Main ======================= -->
+    <main class="main">
+
+      <div class="page-head">
+        <div>
+          <h1>报修工单看板 <span class="live-chip"><i></i>实时</span></h1>
+          <p class="page-sub">
+            <span>2026 年 10 月 21 日 · 周三</span>
+            <span class="sep">/</span>
+            <span>校园后勤保障中心</span>
+            <span class="sep">/</span>
+            <span>今日已处理 39 单</span>
+          </p>
+        </div>
+        <div class="page-actions">
+          <div class="seg" role="tablist" aria-label="统计时间范围">
+            <button type="button" role="tab" aria-selected="false">今日</button>
+            <button type="button" role="tab" aria-selected="true">本周</button>
+            <button type="button" role="tab" aria-selected="false">本月</button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-icon" aria-label="刷新数据">
+            <svg class="ico" aria-hidden="true"><use href="#i-refresh"></use></svg>
+          </button>
+          <button type="button" class="btn btn-primary">
+            <svg class="ico" aria-hidden="true"><use href="#i-download"></use></svg>
+            导出报表
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ Stats ============ -->
+      <section class="stats" aria-label="核心指标">
+
+        <article class="stat-card is-featured">
+          <div class="stat-top">
+            <span class="stat-label">待受理工单</span>
+            <span class="icon-tile blue" aria-hidden="true"><svg class="ico"><use href="#i-inbox"></use></svg></span>
+          </div>
+          <div class="stat-value num">18<span class="unit">单</span></div>
+          <div class="stat-foot">
+            <span class="delta up">
+              <svg class="ico" aria-hidden="true"><use href="#i-trending-up"></use></svg>
+              6
+            </span>
+            <span class="foot-note">较昨日 · 平均响应 12 分钟</span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">维修中</span>
+            <span class="icon-tile amber" aria-hidden="true"><svg class="ico"><use href="#i-wrench"></use></svg></span>
+          </div>
+          <div class="stat-value num">31<span class="unit">单</span></div>
+          <div class="stat-foot">
+            <span class="delta down">
+              <svg class="ico" aria-hidden="true" style="transform:rotate(90deg)"><use href="#i-arrow-up-right"></use></svg>
+              3
+            </span>
+            <span class="foot-note">较昨日 · 8 位师傅在岗</span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">今日新增</span>
+            <span class="icon-tile slate" aria-hidden="true"><svg class="ico"><use href="#i-calendar"></use></svg></span>
+          </div>
+          <div class="stat-value num">47<span class="unit">单</span></div>
+          <div class="stat-foot">
+            <span class="delta flat">
+              <svg class="ico" aria-hidden="true"><use href="#i-trending-up"></use></svg>
+              12
+            </span>
+            <span class="foot-note">较昨日 · 高峰 10:00–11:00</span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">本周完成率</span>
+            <span class="icon-tile green" aria-hidden="true"><svg class="ico"><use href="#i-check-circle"></use></svg></span>
+          </div>
+          <div class="stat-value num">92.6<span class="pct">%</span></div>
+          <div class="progress-line" aria-hidden="true"><span style="width:92.6%;"></span></div>
+          <div class="stat-foot" style="margin-top:8px;">
+            <span class="delta down">
+              <svg class="ico" aria-hidden="true"><use href="#i-trending-up"></use></svg>
+              2.4%
+            </span>
+            <span class="foot-note">较上周 · 目标 90%</span>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- ============ Trend + distribution ============ -->
+      <section class="insight-grid" aria-label="趋势与分布">
+
+        <article class="card chart-card">
+          <div class="card-head">
+            <div>
+              <h2>工单趋势</h2>
+              <p>近 7 天新增与完成工单对比</p>
+            </div>
+            <div class="seg mini" role="tablist" aria-label="趋势周期">
+              <button type="button" role="tab" aria-selected="true">近 7 天</button>
+              <button type="button" role="tab" aria-selected="false">近 30 天</button>
+            </div>
+          </div>
+
+          <div class="legend-row">
+            <span class="legend"><i class="dot blue"></i>新增工单</span>
+            <span class="legend"><i class="dot green"></i>完成工单</span>
+            <span class="legend-note">单位：单</span>
+          </div>
+
+          <div class="chart-wrap">
+            <svg class="chart-svg" viewBox="0 0 720 248" role="img" aria-label="近七天工单趋势折线图：新增工单分别为 32、41、28、53、46、61、47 单，完成工单分别为 24、33、26、39、42、50、44 单">
+              <defs>
+                <linearGradient id="areaBlue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#1890FF" stop-opacity=".20"/>
+                  <stop offset="70%" stop-color="#1890FF" stop-opacity=".04"/>
+                  <stop offset="100%" stop-color="#1890FF" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+
+              <!-- horizontal grid -->
+              <g>
+                <line class="grid-line" x1="34" y1="66" x2="704" y2="66"/>
+                <line class="grid-line" x1="34" y1="102" x2="704" y2="102"/>
+                <line class="grid-line" x1="34" y1="138" x2="704" y2="138"/>
+                <line class="grid-line" x1="34" y1="174" x2="704" y2="174"/>
+                <line class="axis-line" x1="34" y1="210" x2="704" y2="210"/>
+              </g>
+
+              <!-- y ticks -->
+              <g text-anchor="end">
+                <text class="tick" x="24" y="69.5">60</text>
+                <text class="tick" x="24" y="105.5">45</text>
+                <text class="tick" x="24" y="141.5">30</text>
+                <text class="tick" x="24" y="177.5">15</text>
+                <text class="tick" x="24" y="213.5">0</text>
+              </g>
+
+              <!-- area -->
+              <path d="M34 133.2 C71.2 133.2,108.5 111.6,145.67 111.6 C182.8 111.6,220.2 142.8,257.33 142.8 C294.5 142.8,331.8 82.8,369 82.8 C406.2 82.8,443.5 99.6,480.67 99.6 C517.8 99.6,555.2 63.6,592.33 63.6 C629.5 63.6,666.8 97.2,704 97.2 L704 210 L34 210 Z" fill="url(#areaBlue)"/>
+
+              <!-- completed -->
+              <path class="line-done" d="M34 152.4 C71.2 152.4,108.5 130.8,145.67 130.8 C182.8 130.8,220.2 147.6,257.33 147.6 C294.5 147.6,331.8 116.4,369 116.4 C406.2 116.4,443.5 109.2,480.67 109.2 C517.8 109.2,555.2 90,592.33 90 C629.5 90,666.8 104.4,704 104.4"/>
+
+              <!-- new -->
+              <path class="line-new" d="M34 133.2 C71.2 133.2,108.5 111.6,145.67 111.6 C182.8 111.6,220.2 142.8,257.33 142.8 C294.5 142.8,331.8 82.8,369 82.8 C406.2 82.8,443.5 99.6,480.67 99.6 C517.8 99.6,555.2 63.6,592.33 63.6 C629.5 63.6,666.8 97.2,704 97.2"/>
+
+              <!-- peak guide + tip -->
+              <g>
+                <line class="guide" x1="592.33" y1="76" x2="592.33" y2="210"/>
+                <circle cx="592.33" cy="63.6" r="4.5" fill="#fff" stroke="#1890FF" stroke-width="2.6"/>
+                <g class="chart-tip">
+                  <rect x="552" y="24" width="80" height="26" rx="8"/>
+                  <text x="592" y="41" text-anchor="middle">61 单 · 峰值</text>
+                </g>
+              </g>
+
+              <!-- endpoint dots -->
+              <circle class="end-dot" cx="704" cy="97.2" r="4" stroke="#1890FF"/>
+              <circle class="end-dot" cx="704" cy="104.4" r="4" stroke="#52C41A"/>
+
+              <!-- x labels -->
+              <g text-anchor="middle">
+                <text class="tick" x="34" y="236">周一</text>
+                <text class="tick" x="145.67" y="236">周二</text>
+                <text class="tick" x="257.33" y="236">周三</text>
+                <text class="tick" x="369" y="236">周四</text>
+                <text class="tick" x="480.67" y="236">周五</text>
+                <text class="tick" x="592.33" y="236">周六</text>
+                <text class="tick" x="704" y="236">周日</text>
+              </g>
+            </svg>
+          </div>
+        </article>
+
+        <article class="card status-card">
+          <div class="card-head">
+            <div>
+              <h2>工单状态分布</h2>
+              <p>本周全部工单构成</p>
+            </div>
+            <span class="chip">共 128 单</span>
+          </div>
+
+          <div class="donut-wrap">
+            <svg viewBox="0 0 200 200" role="img" aria-label="工单状态分布环形图：待受理 18 单、已派单 22 单、维修中 31 单、已完成 19 单、已确认 33 单、已取消 5 单">
+              <circle class="donut-track" cx="100" cy="100" r="62"/>
+              <g transform="rotate(-90 100 100)" pathLength="100">
+                <circle class="donut-seg" cx="100" cy="100" r="62" pathLength="100" stroke="#1890FF" stroke-dasharray="14.06 85.94" stroke-dashoffset="0"/>
+                <circle class="donut-seg" cx="100" cy="100" r="62" pathLength="100" stroke="#7FB9F2" stroke-dasharray="17.19 82.81" stroke-dashoffset="-14.06"/>
+                <circle class="donut-seg" cx="100" cy="100" r="62" pathLength="100" stroke="#FAAD14" stroke-dasharray="24.22 75.78" stroke-dashoffset="-31.25"/>
+                <circle class="donut-seg" cx="100" cy="100" r="62" pathLength="100" stroke="#95DE64" stroke-dasharray="14.84 85.16" stroke-dashoffset="-55.47"/>
+                <circle class="donut-seg" cx="100" cy="100" r="62" pathLength="100" stroke="#52C41A" stroke-dasharray="25.78 74.22" stroke-dashoffset="-70.31"/>
+                <circle class="donut-seg" cx="100" cy="100" r="62" pathLength="100" stroke="#C9D6E5" stroke-dasharray="3.91 96.09" stroke-dashoffset="-96.09"/>
+              </g>
+            </svg>
+            <div class="donut-center">
+              <strong class="num">128</strong>
+              <span>工单总数</span>
+              <em>完成率 92.6%</em>
+            </div>
+          </div>
+
+          <ul class="status-list">
+            <li><i class="dot" style="background:#1890FF"></i><span class="name">待受理</span><b>18</b><span class="pct">14.1%</span></li>
+            <li><i class="dot" style="background:#7FB9F2"></i><span class="name">已派单</span><b>22</b><span class="pct">17.2%</span></li>
+            <li><i class="dot" style="background:#FAAD14"></i><span class="name">维修中</span><b>31</b><span class="pct">24.2%</span></li>
+            <li><i class="dot" style="background:#95DE64"></i><span class="name">已完成</span><b>19</b><span class="pct">14.8%</span></li>
+            <li><i class="dot" style="background:#52C41A"></i><span class="name">已确认</span><b>33</b><span class="pct">25.8%</span></li>
+            <li><i class="dot" style="background:#C9D6E5"></i><span class="name">已取消</span><b>5</b><span class="pct">3.9%</span></li>
+          </ul>
+        </article>
+
+      </section>
+
+      <!-- ============ Order table ============ -->
+      <section class="card table-card" aria-labelledby="orderListTitle">
+
+        <div class="table-head">
+          <div class="title-wrap">
+            <h2 id="orderListTitle">工单列表</h2>
+            <p>共 <b>128</b> 条工单 · <b>18</b> 条待受理，建议优先派单</p>
+          </div>
+          <div class="toolbar">
+            <div class="search-field">
+              <svg class="ico" aria-hidden="true"><use href="#i-search"></use></svg>
+              <input type="search" placeholder="搜索工单号 / 标题 / 报修人" aria-label="搜索工单">
+            </div>
+            <button type="button" class="select-btn">
+              <svg class="ico" aria-hidden="true"><use href="#i-filter"></use></svg>
+              故障分类
+              <svg class="ico" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+            </button>
+            <button type="button" class="select-btn">
+              <svg class="ico" aria-hidden="true"><use href="#i-calendar"></use></svg>
+              近 7 天
+              <svg class="ico" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm">
+              <svg class="ico" aria-hidden="true"><use href="#i-send"></use></svg>
+              批量派单
+            </button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="按状态筛选工单">
+          <button type="button" class="tab" role="tab" aria-selected="true">全部<span class="count">128</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false">待受理<span class="count">18</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false">已派单<span class="count">22</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false">维修中<span class="count">31</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false">已完成<span class="count">19</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false">已确认<span class="count">33</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false">已取消<span class="count">5</span></button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">报修工单列表，包含工单号、故障描述、分类、报修人、维修师傅、状态、创建时间与操作</caption>
+            <thead>
+              <tr>
+                <th scope="col">
+                  <label class="check"><input type="checkbox" aria-label="全选当前页工单"></label>
+                </th>
+                <th scope="col">工单 / 故障描述</th>
+                <th scope="col">分类</th>
+                <th scope="col">报修人</th>
+                <th scope="col">维修师傅</th>
+                <th scope="col">状态</th>
+                <th scope="col">创建时间</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <tr>
+                <td><label class="check"><input type="checkbox" aria-label="选择工单 RO20261021-018"></label></td>
+                <td class="order-cell">
+                  <div class="order-no">RO20261021-018 <span class="tag-urgent">紧急</span></div>
+                  <span class="order-title">3 号教学楼 402 多媒体教室投影仪无法开机</span>
+                  <span class="order-addr"><svg class="ico" aria-hidden="true"><use href="#i-pin"></use></svg>3 号教学楼 · 402 多媒体教室</span>
+                </td>
+                <td><span class="cat c-blue"><i></i>教学设备</span></td>
+                <td><div class="person"><span class="avatar av-1">林</span><span>林晓雨</span></div></td>
+                <td><span class="unassigned"><svg class="ico" aria-hidden="true"><use href="#i-plus"></use></svg>待分配</span></td>
+                <td><span class="pill pending"><i class="dot"></i>待受理</span></td>
+                <td class="time-cell">10-21<small>14:32</small></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="act act-primary">派单</button>
+                    <button type="button" class="act">详情</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><label class="check"><input type="checkbox" aria-label="选择工单 RO20261021-017"></label></td>
+                <td class="order-cell">
+                  <div class="order-no">RO20261021-017</div>
+                  <span class="order-title">学生公寓 7 栋 512 卫生间水压过低</span>
+                  <span class="order-addr"><svg class="ico" aria-hidden="true"><use href="#i-pin"></use></svg>学生公寓 7 栋 · 512</span>
+                </td>
+                <td><span class="cat c-cyan"><i></i>给排水</span></td>
+                <td><div class="person"><span class="avatar av-2">周</span><span>周子昂</span></div></td>
+                <td><div class="person"><span class="avatar av-5">李</span><span>李伟民</span></div></td>
+                <td><span class="pill assigned"><i class="dot"></i>已派单</span></td>
+                <td class="time-cell">10-21<small>13:05</small></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="act act-primary">改派</button>
+                    <button type="button" class="act">详情</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><label class="check"><input type="checkbox" aria-label="选择工单 RO20261021-016"></label></td>
+                <td class="order-cell">
+                  <div class="order-no">RO20261021-016</div>
+                  <span class="order-title">图书馆 2 层自习区空调不制冷</span>
+                  <span class="order-addr"><svg class="ico" aria-hidden="true"><use href="#i-pin"></use></svg>图书馆 · 2 层自习区</span>
+                </td>
+                <td><span class="cat c-amber"><i></i>空调设备</span></td>
+                <td><div class="person"><span class="avatar av-3">苏</span><span>苏婷</span></div></td>
+                <td><div class="person"><span class="avatar av-4">赵</span><span>赵国强</span></div></td>
+                <td><span class="pill processing"><i class="dot"></i>维修中</span></td>
+                <td class="time-cell">10-21<small>11:48</small></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="act act-primary">跟进</button>
+                    <button type="button" class="act">详情</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><label class="check"><input type="checkbox" aria-label="选择工单 RO20261021-015"></label></td>
+                <td class="order-cell">
+                  <div class="order-no">RO20261021-015</div>
+                  <span class="order-title">体育馆器材室西侧门锁损坏无法上锁</span>
+                  <span class="order-addr"><svg class="ico" aria-hidden="true"><use href="#i-pin"></use></svg>体育馆 · 器材室西侧</span>
+                </td>
+                <td><span class="cat c-green"><i></i>门窗五金</span></td>
+                <td><div class="person"><span class="avatar av-1">何</span><span>何嘉豪</span></div></td>
+                <td><div class="person"><span class="avatar av-2">王</span><span>王志远</span></div></td>
+                <td><span class="pill completed"><i class="dot"></i>已完成</span></td>
+                <td class="time-cell">10-21<small>10:20</small></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="act">详情</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><label class="check"><input type="checkbox" aria-label="选择工单 RO20261021-012"></label></td>
+                <td class="order-cell">
+                  <div class="order-no">RO20261021-012</div>
+                  <span class="order-title">实验楼 B 栋 305 网络端口无信号</span>
+                  <span class="order-addr"><svg class="ico" aria-hidden="true"><use href="#i-pin"></use></svg>实验楼 B 栋 · 305</span>
+                </td>
+                <td><span class="cat c-steel"><i></i>网络通信</span></td>
+                <td><div class="person"><span class="avatar av-4">王</span><span>王思远</span></div></td>
+                <td><div class="person"><span class="avatar av-3">陈</span><span>陈立群</span></div></td>
+                <td><span class="pill confirmed"><i class="dot"></i>已确认</span></td>
+                <td class="time-cell">10-20<small>16:10</small></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="act">详情</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><label class="check"><input type="checkbox" aria-label="选择工单 RO20261020-041"></label></td>
+                <td class="order-cell">
+                  <div class="order-no">RO20261020-041</div>
+                  <span class="order-title">一号食堂后厨排水口堵塞返水</span>
+                  <span class="order-addr"><svg class="ico" aria-hidden="true"><use href="#i-pin"></use></svg>一号食堂 · 后厨</span>
+                </td>
+                <td><span class="cat c-cyan"><i></i>给排水</span></td>
+                <td><div class="person"><span class="avatar av-5">郑</span><span>郑一诺</span></div></td>
+                <td><span class="unassigned"><svg class="ico" aria-hidden="true"><use href="#i-plus"></use></svg>待分配</span></td>
+                <td><span class="pill cancelled"><i class="dot"></i>已取消</span></td>
+                <td class="time-cell">10-20<small>17:42</small></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="act">详情</button>
+                  </div>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-foot">
+          <span class="foot-info">共 <b>128</b> 条工单，本页显示 <b>6</b> 条</span>
+          <nav class="pager" aria-label="分页">
+            <button type="button" aria-label="上一页" disabled style="opacity:.45;cursor:not-allowed;">
+              <svg class="ico" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+            </button>
+            <button type="button" aria-current="page">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <span class="gap">···</span>
+            <button type="button">22</button>
+            <button type="button" aria-label="下一页">
+              <svg class="ico" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+            </button>
+          </nav>
+        </div>
+
+      </section>
+
+      <footer class="page-foot">
+        <span class="dot" aria-hidden="true"></span>
+        数据每 30 秒自动刷新 · 最后同步 14:36:20
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- 消息通知下拉 ---------- */
+  var bell = document.getElementById("bellBtn");
+  var panel = document.getElementById("notifPanel");
+  var markAll = document.getElementById("markAll");
+  var badge = document.getElementById("unreadBadge");
+  var unreadCount = document.getElementById("unreadCount");
+
+  function closeNotif() {
+    panel.classList.remove("is-open");
+    bell.setAttribute("aria-expanded", "false");
+  }
+
+  bell.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var open = panel.classList.toggle("is-open");
+    bell.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  panel.addEventListener("click", function (e) { e.stopPropagation(); });
+
+  markAll.addEventListener("click", function () {
+    Array.prototype.forEach.call(
+      panel.querySelectorAll(".notif-item.unread"),
+      function (item) { item.classList.remove("unread"); }
+    );
+    Array.prototype.forEach.call(
+      panel.querySelectorAll(".notif-dot"),
+      function (dot) { dot.remove(); }
+    );
+    badge.classList.add("is-hidden");
+    unreadCount.textContent = "0";
+    markAll.textContent = "已全部读";
+    markAll.classList.add("is-done");
+    markAll.disabled = true;
+  });
+
+  document.addEventListener("click", closeNotif);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeNotif();
+  });
+
+  /* ---------- 状态标签页切换（纯视觉稿） ---------- */
+  var tablists = document.querySelectorAll('[role="tablist"]');
+  Array.prototype.forEach.call(tablists, function (list) {
+    var tabs = list.querySelectorAll('[role="tab"]');
+    Array.prototype.forEach.call(tabs, function (tab) {
+      tab.addEventListener("click", function () {
+        Array.prototype.forEach.call(tabs, function (t) {
+          t.setAttribute("aria-selected", "false");
+        });
+        tab.setAttribute("aria-selected", "true");
+      });
+    });
+  });
+
+  /* ---------- 移动端侧边栏 ---------- */
+  var menuBtn = document.getElementById("menuBtn");
+  var sidebar = document.getElementById("sidebar");
+  var scrim = document.getElementById("scrim");
+
+  function setNav(open) {
+    sidebar.classList.toggle("is-open", open);
+    scrim.classList.toggle("is-open", open);
+    scrim.hidden = !open;
+    menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+
+  menuBtn.addEventListener("click", function () {
+    setNav(!sidebar.classList.contains("is-open"));
+  });
+  scrim.addEventListener("click", function () { setNav(false); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") setNav(false);
+  });
+
+  /* ---------- 侧边栏菜单选中态 ---------- */
+  var items = sidebar.querySelectorAll(".nav-item");
+  Array.prototype.forEach.call(items, function (item) {
+    item.addEventListener("click", function () {
+      Array.prototype.forEach.call(items, function (i) {
+        i.classList.remove("active");
+        i.removeAttribute("aria-current");
+      });
+      item.classList.add("active");
+      item.setAttribute("aria-current", "page");
+      if (window.matchMedia("(max-width: 780px)").matches) setNav(false);
+    });
+  });
+})();
+</script>
+</body>
+</html>

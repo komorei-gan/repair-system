@@ -1,0 +1,44 @@
+/* ============================================================
+   Element Plus 主题覆盖 —— 与 design-web.html 蓝阶对齐
+   仅覆盖主色；中性灰、边框色沿用 EP 默认（与视觉稿观感一致）
+   ============================================================ */
+:root {
+  --el-color-primary: #1890ff;
+  --el-color-primary-light-3: #63b5ff;
+  --el-color-primary-light-5: #8cc7ff;
+  --el-color-primary-light-7: #b5daff;
+  --el-color-primary-light-8: #c9e5ff;
+  --el-color-primary-light-9: #eaf4ff;
+  --el-color-primary-dark-2: #0e7be0;
+
+  --el-color-success: #52c41a;
+  --el-color-warning: #faad14;
+  --el-color-danger: #f5222d;
+
+  --el-border-radius-base: 9px;
+  --el-border-radius-small: 7px;
+  --el-font-size-base: 13px;
+  --el-text-color-primary: #0f2137;
+  --el-text-color-regular: #2c4661;
+  --el-text-color-secondary: #5e7489;
+  --el-text-color-placeholder: #9aadc1;
+  --el-border-color: #d3e1f0;
+  --el-border-color-light: #e4ecf6;
+  --el-border-color-lighter: #eaf1f9;
+  --el-fill-color-light: #f2f6fc;
+  --el-fill-color-blank: #ffffff;
+  --el-box-shadow: 0 1px 2px rgba(15, 42, 74, 0.04), 0 18px 36px -30px rgba(10, 42, 80, 0.35);
+  --el-box-shadow-light: 0 1px 2px rgba(15, 42, 74, 0.04), 0 12px 24px -20px rgba(10, 42, 80, 0.35);
+}
+
+/* 消息提示微调：与视觉稿文字风格一致 */
+.el-message {
+  border-radius: 10px;
+  font-family: inherit;
+}
+
+/* 输入框聚焦环采用蓝色柔和光环 */
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.14) !important;
+}

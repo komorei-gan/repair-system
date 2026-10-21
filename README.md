@@ -1,6 +1,6 @@
 # 报修工单系统 — 后端（repair-system）
 
-第一阶段：基础工程 + 用户认证模块；第二阶段：工单核心模块（完整状态机）。
+第一阶段：基础工程 + 用户认证模块；第二阶段：工单核心模块（完整状态机）；第三阶段：通知读取模块。
 
 技术栈：Spring Boot 3.3.5 · JDK 17 · MySQL 8 · MyBatis-Plus 3.5.7 · Spring Security + JWT (jjwt 0.12.6) · Lombok
 
@@ -71,6 +71,17 @@
 | ⭐ PUT | /api/admin/orders/{id}/reassign | 改派（仅 ASSIGNED/PROCESSING，新师傅≠现任）→ 通知新旧师傅 |
 | ⭐ PUT | /api/admin/orders/{id}/reject | 驳回（仅 PENDING，原因必填）→ 通知报修人 |
 | ⭐ PUT | /api/admin/orders/{id}/cancel | 管理员取消（仅 PENDING/ASSIGNED，原因必填）→ 通知报修人（有师傅则一并） |
+
+## 通知接口（design.md §3.5，三端通用，登录即可）
+
+| Method | URL | 说明 |
+| --- | --- | --- |
+| GET | /api/notifications | 我的通知列表（分页，按时间倒序，`?isRead=0/1` 筛选） |
+| GET | /api/notifications/unread-count | 未读数（轮询专用，`SELECT COUNT(*)` 走 `idx_user_read` 索引） |
+| PUT | /api/notifications/{id}/read | 标记单条已读（幂等；仅本人通知） |
+| PUT | /api/notifications/read-all | 全部标记已读 |
+
+> 所有接口的 userId 均从 SecurityContext 获取，客户端无法指定；轮询建议 30s 一次（design.md §4.2）。
 
 ## 工单状态机（design.md §1）
 
