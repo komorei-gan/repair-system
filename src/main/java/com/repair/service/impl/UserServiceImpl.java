@@ -7,6 +7,8 @@ import com.repair.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -31,5 +33,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public void save(User user) {
         userMapper.insert(user);
+    }
+
+    @Override
+    public List<User> listEnabledByRole(String role) {
+        return userMapper.selectList(new LambdaQueryWrapper<User>()
+                .eq(User::getRole, role)
+                .eq(User::getStatus, 1)
+                .orderByAsc(User::getId));
     }
 }

@@ -56,6 +56,9 @@ public interface OrderService {
     /** 管理员工单分页（状态/分类/时间/关键字） */
     PageResult<OrderVO> adminOrders(Page<?> page, OrderQuery query);
 
+    /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
+    long pendingCount();
+
     /** 管理员派单：PENDING → ASSIGNED，通知师傅 */
     void assign(Long id, AssignRequest request);
 

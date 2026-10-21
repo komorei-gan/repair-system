@@ -329,18 +329,39 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResult<OrderVO> adminOrders(Page<?> page, OrderQuery query) {
+        String keyword = query.getKeyword();
+        // 按报修人姓名/账号匹配：先查报修人主键，再 in 过滤（避免 SQL 拼接注入）。
+        // 无匹配报修人时使用空集合，保证 keyword 仅命中报修人字段时结果为空，而非回退全量。
+        boolean hasKeyword = StringUtils.hasText(keyword);
+        List<Long> reporterIds = hasKeyword ? userMapper.selectReporterIdsByKeyword(keyword.trim()) : null;
+
+        // 状态过滤：忽略 null、空白与哨兵值 "ALL"（前端「全部」Tab 可能误传），
+        // 未选状态或选「全部」时不加状态条件，避免 status='ALL' 查出空结果。
+        String status = query.getStatus();
+        boolean hasStatus = status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim());
+
         LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
-                .eq(StringUtils.hasText(query.getStatus()), RepairOrder::getStatus, query.getStatus())
+                .eq(hasStatus, RepairOrder::getStatus, hasStatus ? status.trim() : null)
                 .eq(query.getCategoryId() != null, RepairOrder::getCategoryId, query.getCategoryId())
                 .ge(query.getStartTime() != null, RepairOrder::getCreatedAt, query.getStartTime())
                 .le(query.getEndTime() != null, RepairOrder::getCreatedAt, query.getEndTime())
-                .and(StringUtils.hasText(query.getKeyword()),
-                        w -> w.like(RepairOrder::getOrderNo, query.getKeyword())
-                                .or()
-                                .like(RepairOrder::getTitle, query.getKeyword()))
+                .and(hasKeyword, w -> {
+                    w.like(RepairOrder::getOrderNo, keyword)
+                            .or()
+                            .like(RepairOrder::getTitle, keyword);
+                    if (reporterIds != null && !reporterIds.isEmpty()) {
+                        w.or().in(RepairOrder::getReporterId, reporterIds);
+                    }
+                })
                 .orderByDesc(RepairOrder::getCreatedAt);
         Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
         return PageResult.from(result.convert(this::toVO));
+    }
+
+    @Override
+    public long pendingCount() {
+        return repairOrderMapper.selectCount(new LambdaQueryWrapper<RepairOrder>()
+                .eq(RepairOrder::getStatus, OrderStatus.PENDING));
     }
 
     @Override

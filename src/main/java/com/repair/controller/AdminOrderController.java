@@ -40,6 +40,13 @@ public class AdminOrderController {
         return Result.success(orderService.adminOrders(new Page<>(pageNum, pageSize), query));
     }
 
+    /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
+    @GetMapping("/pending-count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Long> pendingCount() {
+        return Result.success(orderService.pendingCount());
+    }
+
     /** 派单（PENDING → ASSIGNED，指定师傅）→ 通知师傅 */
     @PutMapping("/{id}/assign")
     @PreAuthorize("hasRole('ADMIN')")

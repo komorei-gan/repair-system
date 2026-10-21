@@ -99,8 +99,31 @@ body::before {
   }
 }
 
+/* 由下往上位移 + 淡入（列表渐显，0.4s ease-out） */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .rise {
   animation: rise 0.55s var(--ease) both;
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out both;
+}
+
+/* 截图/录屏辅助：?noanim 时跳过所有入场动画 */
+html.noanim .rise,
+html.noanim .slide-up {
+  animation: none !important;
+  opacity: 1 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -113,7 +136,8 @@ body::before {
     transition-duration: 0.001ms !important;
   }
   /* 填充模式 both 会把 from 态（opacity:0）固定住，需显式兜底 */
-  .rise {
+  .rise,
+  .slide-up {
     animation: none !important;
     opacity: 1 !important;
   }

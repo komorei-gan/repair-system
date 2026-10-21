@@ -93,3 +93,47 @@ export interface Category {
   status: number
   createdAt: string
 }
+
+/** 工单详情视图（含 description/images 大字段与操作日志） */
+export interface OrderDetailVO {
+  id: number
+  orderNo: string
+  reporterId: number
+  reporterName: string | null
+  categoryId: number | null
+  categoryName: string | null
+  title: string
+  description: string | null
+  images: string | null
+  address: string | null
+  contactPhone: string | null
+  status: OrderStatus
+  repairerId: number | null
+  repairerName: string | null
+  repairerPhone: string | null
+  assignTime: string | null
+  acceptTime: string | null
+  finishTime: string | null
+  confirmTime: string | null
+  rejectReason: string | null
+  cancelReason: string | null
+  repairResult: string | null
+  rating: number | null
+  ratingComment: string | null
+  remindCount: number
+  createdAt: string
+  logs: OrderLogVO[]
+}
+
+/** 工单操作日志 */
+export interface OrderLogVO {
+  id: number
+  operatorId: number | null
+  operatorName: string | null
+  operatorRole: string | null
+  action: string
+  fromStatus: OrderStatus | null
+  toStatus: OrderStatus | null
+  remark: string | null
+  createdAt: string
+}

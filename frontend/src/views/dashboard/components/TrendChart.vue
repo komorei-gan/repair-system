@@ -1,138 +1,166 @@
 <script setup lang="ts">
 /**
- * 工单趋势手绘 SVG 折线图 —— 路径坐标 1:1 迁自 design-web.html（图一）。
+ * 工单趋势折线图（ECharts 重写版）。
+ * - 两条线：新增工单（#1890FF + 渐变面积）、完成工单（#52C41A）
+ * - 动效：数据从左向右生长（ECharts 折线 clipPath 入场动画）+ 面积自底部升起
+ * - 首屏挂载（含浏览器 F5 刷新）与刷新按钮共用 BaseChart 的统一时序：
+ *   先渲染「保留坐标系、仅 series.data 为空」的空态，
+ *   再 clear() 销毁旧视图后 setOption 真实数据，
+ *   使折线视图重新走「首次创建」分支，从而播放生长动画。
+ *
+ * ★ 空态必须保留 grid / xAxis / yAxis：
+ *   坐标系一旦缺失，ECharts 会连坐标轴一起重算，折线直接从“无中生有”地出现，
+ *   而不是在既有坐标系内从左向右生长。因此空态只置空 series.data。
+ * ★ y 轴 min/max 固定：否则空态与真实数据的轴范围不同，生长过程会伴随纵向跳变。
  */
-import { TREND_DAYS } from '../mock'
+import { computed, ref } from 'vue'
+import * as echarts from 'echarts/core'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, MarkPointComponent } from 'echarts/components'
+import { LabelLayout, UniversalTransition } from 'echarts/features'
+import { CanvasRenderer } from 'echarts/renderers'
+import type { EChartsCoreOption } from 'echarts/core'
+import { TREND_DAYS, TREND_DONE, TREND_NEW } from '../mock'
+import BaseChart from '@/components/charts/BaseChart.vue'
 
-withDefaults(defineProps<{ days?: string[] }>(), {
-  days: () => TREND_DAYS,
-})
+echarts.use([
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  MarkPointComponent,
+  LabelLayout,
+  UniversalTransition,
+  CanvasRenderer,
+])
+
+/** 与 design-web.html 图一一致的数据（TODO: 接 /api/admin/stats/dashboard） */
+const days = ref<string[]>([...TREND_DAYS])
+const newOrders = ref<number[]>([...TREND_NEW])
+const doneOrders = ref<number[]>([...TREND_DONE])
+
+/** 生长动画时长（ms），从左向右生长 + 面积升起 */
+const GROW_DURATION = 1400
+const GROW_EASING = 'cubicOut'
+
+/**
+ * 构造 option。
+ * @param empty true 时仅把两条线的 data 置空，grid / xAxis / yAxis 全部保留，
+ *              作为生长动画的起点（有坐标系才有“在框内生长”的参照）。
+ */
+function buildOption(empty = false): EChartsCoreOption {
+  return {
+    animation: true,
+    animationDuration: GROW_DURATION,
+    animationEasing: GROW_EASING,
+    // 生长依赖「首次创建」的入场动画；更新阶段不再做二次补间
+    animationDurationUpdate: 0,
+    grid: { left: 40, right: 14, top: 44, bottom: 30 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#102B47',
+      borderWidth: 0,
+      padding: [10, 14],
+      textStyle: { color: '#fff', fontSize: 12 },
+      axisPointer: { type: 'line', lineStyle: { color: '#BBD6F0', type: 'dashed' } },
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: days.value,
+      axisLine: { lineStyle: { color: '#DDE9F5' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#8FA3B8', fontSize: 11, margin: 14 },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 70,
+      interval: 15,
+      splitLine: { lineStyle: { color: '#ECF3FA' } },
+      axisLabel: { color: '#8FA3B8', fontSize: 10.5 },
+    },
+    series: [
+      {
+        id: 'done',
+        name: '完成工单',
+        type: 'line',
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 5,
+        showSymbol: false,
+        data: empty ? [] : doneOrders.value,
+        lineStyle: { width: 2.2, color: '#52C41A', opacity: 0.95 },
+        itemStyle: { color: '#52C41A', borderColor: '#fff', borderWidth: 1.5 },
+        emphasis: { scale: 1.6 },
+        z: 2,
+      },
+      {
+        id: 'new',
+        name: '新增工单',
+        type: 'line',
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 6,
+        showSymbol: false,
+        data: empty ? [] : newOrders.value,
+        lineStyle: { width: 2.6, color: '#1890FF' },
+        itemStyle: { color: '#1890FF', borderColor: '#fff', borderWidth: 2 },
+        emphasis: { scale: 1.6 },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(24,144,255,.20)' },
+              { offset: 0.7, color: 'rgba(24,144,255,.04)' },
+              { offset: 1, color: 'rgba(24,144,255,0)' },
+            ],
+          },
+        },
+        // 末端圆点：最后一天标记（仅在非空态展示）
+        markPoint: empty
+          ? undefined
+          : {
+              symbol: 'circle',
+              symbolSize: 9,
+              label: { show: false },
+              data: [
+                {
+                  name: '今日',
+                  coord: [days.value.length - 1, newOrders.value[newOrders.value.length - 1]],
+                  itemStyle: { color: '#1890FF', borderColor: '#fff', borderWidth: 2.5 },
+                },
+              ],
+            },
+        z: 3,
+      },
+    ],
+  }
+}
+
+const option = computed<EChartsCoreOption>(() => buildOption(false))
+const emptyOption = computed<EChartsCoreOption>(() => buildOption(true))
+
+/** 刷新时由父组件调用，重播生长动画（与 F5 走同一条 BaseChart 时序） */
+const chartRef = ref<InstanceType<typeof BaseChart>>()
+
+function refresh(): void {
+  chartRef.value?.playGrow()
+}
+
+defineExpose({ refresh })
 </script>
 
 <template>
-  <svg
-    class="chart-svg"
-    viewBox="0 0 720 248"
-    role="img"
-    aria-label="近七天工单趋势折线图：新增工单分别为 32、41、28、53、46、61、47 单，完成工单分别为 24、33、26、39、42、50、44 单"
-  >
-    <defs>
-      <linearGradient id="areaBlue" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#1890FF" stop-opacity=".20" />
-        <stop offset="70%" stop-color="#1890FF" stop-opacity=".04" />
-        <stop offset="100%" stop-color="#1890FF" stop-opacity="0" />
-      </linearGradient>
-    </defs>
-
-    <!-- 横向网格 -->
-    <g>
-      <line class="grid-line" x1="34" y1="66" x2="704" y2="66" />
-      <line class="grid-line" x1="34" y1="102" x2="704" y2="102" />
-      <line class="grid-line" x1="34" y1="138" x2="704" y2="138" />
-      <line class="grid-line" x1="34" y1="174" x2="704" y2="174" />
-      <line class="axis-line" x1="34" y1="210" x2="704" y2="210" />
-    </g>
-
-    <!-- Y 轴刻度 -->
-    <g text-anchor="end">
-      <text class="tick" x="24" y="69.5">60</text>
-      <text class="tick" x="24" y="105.5">45</text>
-      <text class="tick" x="24" y="141.5">30</text>
-      <text class="tick" x="24" y="177.5">15</text>
-      <text class="tick" x="24" y="213.5">0</text>
-    </g>
-
-    <!-- 面积 -->
-    <path
-      d="M34 133.2 C71.2 133.2,108.5 111.6,145.67 111.6 C182.8 111.6,220.2 142.8,257.33 142.8 C294.5 142.8,331.8 82.8,369 82.8 C406.2 82.8,443.5 99.6,480.67 99.6 C517.8 99.6,555.2 63.6,592.33 63.6 C629.5 63.6,666.8 97.2,704 97.2 L704 210 L34 210 Z"
-      fill="url(#areaBlue)"
-    />
-
-    <!-- 完成工单 -->
-    <path
-      class="line-done"
-      d="M34 152.4 C71.2 152.4,108.5 130.8,145.67 130.8 C182.8 130.8,220.2 147.6,257.33 147.6 C294.5 147.6,331.8 116.4,369 116.4 C406.2 116.4,443.5 109.2,480.67 109.2 C517.8 109.2,555.2 90,592.33 90 C629.5 90,666.8 104.4,704 104.4"
-    />
-
-    <!-- 新增工单 -->
-    <path
-      class="line-new"
-      d="M34 133.2 C71.2 133.2,108.5 111.6,145.67 111.6 C182.8 111.6,220.2 142.8,257.33 142.8 C294.5 142.8,331.8 82.8,369 82.8 C406.2 82.8,443.5 99.6,480.67 99.6 C517.8 99.6,555.2 63.6,592.33 63.6 C629.5 63.6,666.8 97.2,704 97.2"
-    />
-
-    <!-- 峰值标注 -->
-    <g>
-      <line class="guide" x1="592.33" y1="76" x2="592.33" y2="210" />
-      <circle cx="592.33" cy="63.6" r="4.5" fill="#fff" stroke="#1890FF" stroke-width="2.6" />
-      <g class="chart-tip">
-        <rect x="552" y="24" width="80" height="26" rx="8" />
-        <text x="592" y="41" text-anchor="middle">61 单 · 峰值</text>
-      </g>
-    </g>
-
-    <!-- 末端圆点 -->
-    <circle class="end-dot" cx="704" cy="97.2" r="4" stroke="#1890FF" />
-    <circle class="end-dot" cx="704" cy="104.4" r="4" stroke="#52C41A" />
-
-    <!-- X 轴标签 -->
-    <g text-anchor="middle">
-      <text v-for="(d, i) in days" :key="d" class="tick" :x="i === 0 ? 34 : i * 111.67 + 34" y="236">
-        {{ d }}
-      </text>
-    </g>
-  </svg>
+  <BaseChart
+    ref="chartRef"
+    :option="option"
+    :empty-option="emptyOption"
+    :grow="true"
+    :grow-delay="340"
+    height="252px"
+  />
 </template>
-
-<style scoped>
-.chart-svg {
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.chart-svg text {
-  font-family: inherit;
-  font-size: 10.5px;
-  fill: #93a7bb;
-}
-.chart-svg .grid-line {
-  stroke: #ecf3fa;
-  stroke-width: 1;
-}
-.chart-svg .axis-line {
-  stroke: #dde9f5;
-  stroke-width: 1;
-}
-.chart-svg .tick {
-  fill: #8fa3b8;
-}
-.chart-svg .line-new {
-  fill: none;
-  stroke: #1890ff;
-  stroke-width: 2.6;
-  stroke-linecap: round;
-}
-.chart-svg .line-done {
-  fill: none;
-  stroke: #52c41a;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-opacity: 0.95;
-}
-.chart-svg .end-dot {
-  fill: #fff;
-  stroke-width: 2.4;
-}
-.chart-svg .guide {
-  stroke: #bbd6f0;
-  stroke-dasharray: 3 4;
-  stroke-width: 1;
-}
-.chart-tip rect {
-  fill: #102b47;
-}
-.chart-tip text {
-  fill: #fff;
-  font-size: 10.5px;
-  font-weight: 600;
-}
-</style>

@@ -35,7 +35,8 @@ watch(
       <TopBar />
       <main class="main">
         <router-view v-slot="{ Component }">
-          <Transition name="page" mode="out-in">
+          <!-- 路由切换过渡：旧页面淡出，新页面淡入 + 轻微上移（300ms） -->
+          <Transition name="fade-slide" mode="out-in">
             <component :is="Component" />
           </Transition>
         </router-view>
@@ -81,17 +82,18 @@ watch(
   opacity: 0;
 }
 
-/* 路由切换微过渡 */
-.page-enter-active,
-.page-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
+/* 路由切换微过渡：旧页淡出 / 新页淡入 + 上移 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
-.page-enter-from {
+.fade-slide-enter-from {
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(14px);
 }
-.page-leave-to {
+.fade-slide-leave-to {
   opacity: 0;
+  transform: translateY(-8px);
 }
 
 /* ===== 响应式 ===== */

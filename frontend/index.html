@@ -5,6 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>校园易修 · 管理端</title>
+    <script>
+      // 截图/录屏辅助：URL 带 ?noanim 时跳过所有 CSS 入场动画
+      if (new URLSearchParams(location.search).has('noanim')) {
+        document.documentElement.classList.add('noanim')
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

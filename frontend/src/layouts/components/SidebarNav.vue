@@ -13,6 +13,8 @@ interface NavItem {
   icon: string
   badge?: number
   dot?: boolean
+  /** 是否展示「待受理工单数」动态角标（orders 菜单） */
+  pending?: boolean
 }
 
 interface NavGroup {
@@ -32,7 +34,7 @@ const groups: NavGroup[] = [
   {
     label: '工单管理',
     items: [
-      { name: 'orders', icon: 'i-clipboard', badge: 18 },
+      { name: 'orders', icon: 'i-clipboard', pending: true },
       { name: 'dispatch', icon: 'i-send' },
       { name: 'repair-progress', icon: 'i-wrench' },
     ],
@@ -109,7 +111,10 @@ function onNavigate(name: string): void {
         >
           <IconSvg :name="item.icon" />
           <span class="label">{{ routeMeta[item.name] }}</span>
-          <span v-if="item.badge" class="nav-badge">{{ item.badge }}</span>
+          <span v-if="item.pending && appStore.pendingCount > 0" class="nav-badge">
+            {{ appStore.pendingCount > 99 ? '99+' : appStore.pendingCount }}
+          </span>
+          <span v-else-if="item.badge" class="nav-badge">{{ item.badge }}</span>
           <span v-else-if="item.dot" class="nav-dot" aria-hidden="true"></span>
         </button>
       </template>

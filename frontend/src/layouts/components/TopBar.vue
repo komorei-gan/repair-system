@@ -33,7 +33,11 @@ async function refreshUnread(): Promise<void> {
 
 onMounted(() => {
   void refreshUnread()
-  pollTimer = window.setInterval(() => void refreshUnread(), 30_000)
+  void appStore.refreshPendingCount()
+  pollTimer = window.setInterval(() => {
+    void refreshUnread()
+    void appStore.refreshPendingCount()
+  }, 30_000)
   document.addEventListener('click', onDocClick)
 })
 

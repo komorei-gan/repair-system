@@ -1,8 +1,11 @@
 <script setup lang="ts">
 /**
  * 工单状态分布环形图（design-web.html 图二 → ECharts 实现）。
- * - 数据与配色 1:1 复刻视觉稿
- * - 初次挂载与手动刷新时 showLoading 展示加载动效
+ * 动效方案（无遮罩）：
+ * - 首屏挂载（含浏览器 F5 刷新）：BaseChart 统一时序 —— 先空数据，
+ *   延迟 320ms 后切入真实数据，pie 从 0 度顺时针生长到目标比例
+ * - 手动刷新：父组件调用 playGrow()，瞬时清空 → 下一帧塞回真实数据，
+ *   复用同一生长动画
  */
 import { computed, ref } from 'vue'
 import * as echarts from 'echarts/core'
@@ -24,104 +27,124 @@ interface StatusSlice {
   pct: string
 }
 
-withDefaults(
-  defineProps<{
-    /** 是否展示加载动效 */
-    loading?: boolean
-  }>(),
-  { loading: false },
-)
-
-const emit = defineEmits<{ 'ready': [] }>()
-
 /** 与 design-web.html 图二完全一致的数据（TODO: 接 /api/admin/stats/dashboard） */
 const slices = ref<StatusSlice[]>([
   { status: 'PENDING', name: '待受理', value: 18, pct: '14.1%' },
   { status: 'ASSIGNED', name: '已派单', value: 22, pct: '17.2%' },
   { status: 'PROCESSING', name: '维修中', value: 31, pct: '24.2%' },
-  { status: 'COMPLETED', name: '已完成', value:19, pct: '14.8%' },
+  { status: 'COMPLETED', name: '已完成', value: 19, pct: '14.8%' },
   { status: 'CONFIRMED', name: '已确认', value: 33, pct: '25.8%' },
   { status: 'CANCELLED', name: '已取消', value: 5, pct: '3.9%' },
 ])
 
 const total = computed(() => slices.value.reduce((s, i) => s + i.value, 0))
 
-const option = computed<EChartsCoreOption>(() => ({
-  tooltip: {
-    trigger: 'item',
-    backgroundColor: '#102B47',
-    borderWidth: 0,
-    padding: [8, 12],
-    textStyle: { color: '#fff', fontSize: 12 },
-    formatter: '{b}：{c} 单（{d}%）',
-  },
-  graphic: [
-    {
-      type: 'text',
-      left: 'center',
-      top: '41%',
-      style: {
-        text: String(total.value),
-        fill: '#0F2137',
-        fontSize: 30,
-        fontWeight: 'bold',
-      },
-    },
-    {
-      type: 'text',
-      left: 'center',
-      top: '55%',
-      style: {
-        text: '工单总数',
-        fill: '#7E92A8',
-        fontSize: 11,
-      },
-    },
-    {
-      type: 'text',
-      left: 'center',
-      top: '63%',
-      style: {
-        text: '完成率 92.6%',
-        fill: '#2E7D0B',
-        fontSize: 11,
-        fontWeight: 'bold',
-      },
-    },
-  ],
-  series: [
-    {
-      type: 'pie',
-      radius: ['62%', '84%'],
-      center: ['50%', '50%'],
-      avoidLabelOverlap: true,
-      itemStyle: {
-        borderRadius: 4,
-        borderColor: '#fff',
-        borderWidth: 2,
-      },
-      label: { show: false },
-      emphasis: {
-        scaleSize: 6,
-        label: { show: false },
-      },
-      data: slices.value.map((s) => ({
-        name: s.name,
-        value: s.value,
-        itemStyle: { color: STATUS_COLORS[s.status] },
-      })),
-    },
-  ],
-}))
+/** 环形生长动画时长（ms） */
+const GROW_DURATION = 1300
+const GROW_EASING = 'cubicOut'
 
-function onReady(): void {
-  emit('ready')
+/**
+ * 构造 option。
+ * @param data 为空数组时表示「空态」，作为生长动画的起点。
+ */
+function buildOption(data: StatusSlice[]): EChartsCoreOption {
+  return {
+    animationDuration: GROW_DURATION,
+    animationEasing: GROW_EASING,
+    // 更新阶段不再二次补间，生长动画由「空 → 满」的入场动画完成
+    animationDurationUpdate: 0,
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#102B47',
+      borderWidth: 0,
+      padding: [8, 12],
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: '{b}：{c} 单（{d}%）',
+    },
+    graphic: [
+      {
+        type: 'text',
+        left: 'center',
+        top: '41%',
+        style: {
+          text: String(total.value),
+          fill: '#0F2137',
+          fontSize: 30,
+          fontWeight: 'bold',
+        },
+      },
+      {
+        type: 'text',
+        left: 'center',
+        top: '55%',
+        style: {
+          text: '工单总数',
+          fill: '#7E92A8',
+          fontSize: 11,
+        },
+      },
+      {
+        type: 'text',
+        left: 'center',
+        top: '63%',
+        style: {
+          text: '完成率 92.6%',
+          fill: '#2E7D0B',
+          fontSize: 11,
+          fontWeight: 'bold',
+        },
+      },
+    ],
+    series: [
+      {
+        id: 'status-donut',
+        type: 'pie',
+        radius: ['62%', '84%'],
+        center: ['50%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2,
+        },
+        label: { show: false },
+        emphasis: {
+          scaleSize: 6,
+          label: { show: false },
+        },
+        data: data.map((s) => ({
+          name: s.name,
+          value: s.value,
+          itemStyle: { color: STATUS_COLORS[s.status] },
+        })),
+      },
+    ],
+  }
 }
+
+const option = computed<EChartsCoreOption>(() => buildOption(slices.value))
+const emptyOption = computed<EChartsCoreOption>(() => buildOption([]))
+
+/** 刷新时由父组件调用，重播生长动画 */
+const chartRef = ref<InstanceType<typeof BaseChart>>()
+
+function refresh(): void {
+  chartRef.value?.playGrow()
+}
+
+defineExpose({ refresh })
 </script>
 
 <template>
   <div class="status-donut">
-    <BaseChart :option="option" :loading="loading" height="196px" @chart-ready="onReady" />
+    <BaseChart
+      ref="chartRef"
+      :option="option"
+      :empty-option="emptyOption"
+      :grow="true"
+      :grow-delay="320"
+      height="196px"
+    />
 
     <!-- 图例（与视觉稿一致的 2 列布局） -->
     <ul class="status-list">
