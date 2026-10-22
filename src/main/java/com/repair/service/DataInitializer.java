@@ -14,6 +14,7 @@ import com.repair.mapper.RepairOrderMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -32,10 +33,15 @@ import java.util.concurrent.ThreadLocalRandom;
  *    状态覆盖全部 7 种：PENDING×2 / ASSIGNED×2 / PROCESSING×2 / COMPLETED×2 /
  *    CONFIRMED×2 / CANCELLED×1 / REJECTED×1，并为每条工单写入对应的 order_log，
  *    保证详情页操作日志（el-timeline）有内容可渲染。
+ *
+ * <p><b>环境隔离</b>：本类各环境的种子数据均为「不存在才创建」，可安全用于生产首次部署。
+ * 其中「强制重置 zhangsan 密码」的兜底逻辑已拆分到
+ * {@link DevReporterAccountResetter}，仅在 {@code dev} profile 下注册，生产环境不会执行。
  * 正式部署后请立即修改密码。
  */
 @Slf4j
 @Component
+@Order(2)
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
@@ -130,7 +136,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     /**
-     * 工单种子数据：报修人 zhangsan（不存在则自动创建）名下生成 12 条测试工单，
+     * 工单种子数据：报修人 zhangsan（已由 forceResetSeedReporter 保证可用）名下生成 12 条测试工单，
      * 状态覆盖全部 7 种，并为每条工单伪造对应状态流转的 order_log（时间错开）。
      * 幂等判断基于「种子标题是否已存在」：即使库里已有其他真实/手动工单，只要种子
      * 标题尚未出现，就照常生成；种子标题已存在则跳过，防止重复插入。
@@ -139,18 +145,11 @@ public class DataInitializer implements CommandLineRunner {
      * 避免启动阶段向管理员与师傅推送无关测试通知。
      */
     private void initSeedOrders() {
+        // zhangsan 已由 forceResetSeedReporter() 保证存在且可用
         User reporter = userService.getByUsername(SEED_REPORTER);
         if (reporter == null) {
-            // 兜底创建报修人账号，保证种子数据一定有归属（仅本地联调用）
-            reporter = new User();
-            reporter.setUsername(SEED_REPORTER);
-            reporter.setPassword(passwordEncoder.encode("zhangsan123"));
-            reporter.setRealName("张三");
-            reporter.setRole(RoleEnum.REPORTER);
-            reporter.setStatus(1);
-            reporter.setFinishCount(0);
-            userService.save(reporter);
-            log.warn("已创建测试报修人账号 {} / zhangsan123（仅本地联调用）", SEED_REPORTER);
+            log.warn("报修人 {} 不存在，跳过测试工单生成", SEED_REPORTER);
+            return;
         }
 
         // 种子标题已存在即跳过，防止重复插入

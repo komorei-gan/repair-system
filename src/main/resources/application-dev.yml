@@ -1,0 +1,5 @@
+# 本地开发环境专用配置（仅在 --spring.profiles.active=dev 时加载）
+# 生产环境严禁激活本 profile；本文件不改变任何表结构或数据初始化行为。
+logging:
+  level:
+    com.repair: debug

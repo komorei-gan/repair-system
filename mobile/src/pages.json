@@ -1,0 +1,45 @@
+{
+	"easycom": {
+		"autoscan": true,
+		"custom": {
+			"^wd-(.*)": "@wot-ui/ui/components/wd-$1/wd-$1.vue"
+		}
+	},
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "我的工单",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/order/create",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "提交报修"
+			}
+		},
+		{
+			"path": "pages/order/detail",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "工单详情"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "报修工单",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	}
+}

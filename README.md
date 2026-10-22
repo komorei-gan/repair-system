@@ -17,14 +17,21 @@
 3. 启动：
 
    ```powershell
-   mvn spring-boot:run
+   # 本地开发（dev profile：启用种子数据、联调账号兜底重置、SQL 脚本初始化）
+   mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+   # 生产环境（prod profile：不注册 DataInitializer / DevReporterAccountResetter，不自动建表）
+   java -jar target/repair-system-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
    ```
 
    - 首次启动自动创建数据库 `repair_system` 及全部 5 张表（脚本见 `src/main/resources/sql/schema.sql`，幂等可重复执行）；
-   - 自动创建种子数据（正式部署请立即改密）：
+   - **仅 dev profile** 自动创建种子数据（正式部署请立即改密）：
      - 管理员 **admin / admin123**；
      - 联调师傅 **master / master123**（王师傅）、**master2 / master123**（李师傅）；
+     - 联调报修人 **zhangsan / zhangsan123**（每次 dev 启动强制校正密码/角色/启用状态）；
      - 故障分类：水电、门窗、网络、家具、其他。
+   - **安全约束**：`DevReporterAccountResetter` 标注 `@Profile("dev")`，未激活 dev 时该 Bean 不会被创建，
+     因此生产环境绝不会执行任何密码重置或种子数据写入。生产务必用 `--spring.profiles.active=prod` 启动。
 
 4. 验证：访问 `http://localhost:8080/api/auth/me` 应返回 401（未登录）。
 

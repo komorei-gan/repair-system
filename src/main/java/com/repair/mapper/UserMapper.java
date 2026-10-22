@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.repair.entity.User;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -27,4 +28,21 @@ public interface UserMapper extends BaseMapper<User> {
     @Select("SELECT id FROM user WHERE deleted = 0 AND role = 'REPORTER' "
             + "AND (real_name LIKE CONCAT('%', #{keyword}, '%') OR username LIKE CONCAT('%', #{keyword}, '%'))")
     List<Long> selectReporterIdsByKeyword(@Param("keyword") String keyword);
+
+    /**
+     * 按用户名查询（包含已被逻辑删除的记录），用于启动时强制兜底修复种子账号。
+     * 原生 SQL 不经过 MP 逻辑删除插件，故可查到 deleted=1 的脏数据。
+     */
+    @Select("SELECT * FROM user WHERE username = #{username} LIMIT 1")
+    User selectByUsernameIgnoreDeleted(@Param("username") String username);
+
+    /**
+     * 按主键强制重置种子账号（原生 SQL，绕过逻辑删除过滤）：
+     * 同时改写 password / role / status / deleted，保证账号可用。
+     */
+    @Update("UPDATE user SET password = #{password}, role = #{role}, status = 1, deleted = 0 "
+            + "WHERE id = #{id}")
+    int forceResetSeedUser(@Param("id") Long id,
+                           @Param("password") String password,
+                           @Param("role") String role);
 }

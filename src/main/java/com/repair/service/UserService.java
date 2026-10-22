@@ -21,6 +21,12 @@ public interface UserService {
     /** 新增用户 */
     void save(User user);
 
+    /** 按用户名查询（包含已被逻辑删除的记录），用于种子账号兜底修复 */
+    User getByUsernameIgnoreDeleted(String username);
+
+    /** 强制重置种子账号（密码 / 角色 / 启用状态 / 逻辑删除标记一并修正） */
+    void forceResetSeedUser(Long id, String rawPassword, String role);
+
     /** 按角色查询启用中的用户（如 REPAIRER），供派单选择师傅 */
     List<User> listEnabledByRole(String role);
 }

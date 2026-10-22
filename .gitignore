@@ -22,3 +22,23 @@ logs/
 ### OS ###
 .DS_Store
 Thumbs.db
+
+### Node / 前端通用 ###
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+### Vue (Web端) ###
+frontend/dist/
+frontend/node_modules/
+*.local
+
+### uni-app (移动端) ###
+mobile/dist/
+mobile/node_modules/
+mobile/unpackage/
+mobile/.hbuilderx/
+
+### 忽略 DSH / pnpm 缓存 ###
+.cache/
