@@ -4,8 +4,8 @@
  * 能力：状态 Tab 筛选 / 关键字搜索（工单号·标题·报修人）/ 分类筛选 /
  *       分页表格（loading 遮罩）/ 详情跳转 / 待受理工单派单。
  */
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as orderApi from '@/api/order'
 import * as categoryApi from '@/api/category'
@@ -32,10 +32,20 @@ const STATUS_TABS: StatusTab[] = [
   { label: '已驳回', status: 'REJECTED' },
 ]
 
-const router = useRouter()
+/** 合法状态码集合，用于校验 URL 参数 */
+const VALID_STATUSES = STATUS_TABS.filter((t) => t.status).map((t) => t.status as OrderStatus)
 
-/* ---------- 筛选状态 ---------- */
-const activeTab = ref<TabValue>('ALL')
+const router = useRouter()
+const route = useRoute()
+
+/* ---------- 筛选状态（activeTab 从 URL 的 status 参数初始化） ---------- */
+function resolveTabFromQuery(): TabValue {
+  const q = route.query.status
+  const v = typeof q === 'string' ? q : undefined
+  return v && (VALID_STATUSES as string[]).includes(v) ? (v as OrderStatus) : 'ALL'
+}
+
+const activeTab = ref<TabValue>(resolveTabFromQuery())
 const keyword = ref('')
 const categoryId = ref<number | undefined>(undefined)
 const categories = ref<Category[]>([])
@@ -88,11 +98,17 @@ async function loadOrders(): Promise<void> {
   }
 }
 
-/** 切换 Tab：重置页码为 1 后重新加载 */
+/** 切换 Tab：同步状态到 URL 并重置页码为 1 后重新加载 */
 function onTabChange(name: string | number): void {
   activeTab.value = typeof name === 'string' && name !== 'ALL' ? (name as OrderStatus) : 'ALL'
   pageNum.value = 1
-  void loadOrders()
+  void syncQueryAndLoad()
+}
+
+/** 将当前 Tab 状态同步到 URL 查询参数（不触发整页刷新） */
+function syncQueryAndLoad(): Promise<void> {
+  const query = activeTab.value === 'ALL' ? {} : { status: activeTab.value }
+  return router.replace({ name: 'orders', query }).then(() => loadOrders())
 }
 
 /** 搜索 / 清空关键字 / 查询按钮：重置页码为 1 */
@@ -137,9 +153,13 @@ function statusTagStyle(status: OrderStatus): Record<string, string> {
   }
 }
 
-/* ---------- 详情跳转 ---------- */
+/* ---------- 详情跳转：把当前 status 通过 query 带过去 ---------- */
 function goDetail(row: OrderVO): void {
-  void router.push({ name: 'order-detail', params: { id: row.id } })
+  void router.push({
+    name: 'order-detail',
+    params: { id: row.id },
+    query: activeTab.value === 'ALL' ? {} : { status: activeTab.value },
+  })
 }
 
 /* ---------- 派单 ---------- */
@@ -188,6 +208,20 @@ onMounted(() => {
   void loadCategories()
   void loadOrders()
 })
+
+// 外部（如详情页返回）改变 URL 的 status 时，同步 Tab 并重新加载
+watch(
+  () => route.query.status,
+  (val) => {
+    const v = typeof val === 'string' ? val : undefined
+    const next: TabValue = v && (VALID_STATUSES as string[]).includes(v) ? (v as OrderStatus) : 'ALL'
+    if (next !== activeTab.value) {
+      activeTab.value = next
+      pageNum.value = 1
+      void loadOrders()
+    }
+  },
+)
 </script>
 
 <template>

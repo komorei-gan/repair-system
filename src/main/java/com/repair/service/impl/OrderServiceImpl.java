@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 工单核心业务实现（design.md §1 完整状态机）。
@@ -611,9 +612,11 @@ public class OrderServiceImpl implements OrderService {
                 .collect(Collectors.toMap(User::getId, this::displayName, (a, b) -> a, HashMap::new));
     }
 
-    /** 单个工单转列表 VO（批量补全名称） */
+    /** 单个工单转列表 VO（批量补全名称）。注意：repairerId 可能为 null，不能直接 List.of。 */
     private OrderVO toVO(RepairOrder order) {
-        Map<Long, String> users = userNames(java.util.List.of(order.getReporterId(), order.getRepairerId()));
+        Map<Long, String> users = userNames(Stream.of(order.getReporterId(), order.getRepairerId())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()));
         return OrderVO.from(order,
                 users.get(order.getReporterId()),
                 categoryName(order.getCategoryId()),

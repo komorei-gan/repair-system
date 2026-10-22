@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AssignDialog: typeof import('./../components/AssignDialog.vue')['default']
     BaseChart: typeof import('./../components/charts/BaseChart.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElDialog: typeof import('element-plus/es')['ElDialog']

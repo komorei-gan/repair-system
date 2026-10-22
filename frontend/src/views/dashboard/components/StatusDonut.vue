@@ -20,24 +20,28 @@ import BaseChart from '@/components/charts/BaseChart.vue'
 
 echarts.use([PieChart, TooltipComponent, GraphicComponent, LabelLayout, CanvasRenderer])
 
-interface StatusSlice {
+/** 状态分布切片（由父组件按真实接口 statusDistribution 构造） */
+export interface StatusSlice {
   status: OrderStatus
   name: string
   value: number
-  pct: string
+  /** 百分比数值（0~100），展示时补 % */
+  pct: number
 }
 
-/** 与 design-web.html 图二完全一致的数据（TODO: 接 /api/admin/stats/dashboard） */
-const slices = ref<StatusSlice[]>([
-  { status: 'PENDING', name: '待受理', value: 18, pct: '14.1%' },
-  { status: 'ASSIGNED', name: '已派单', value: 22, pct: '17.2%' },
-  { status: 'PROCESSING', name: '维修中', value: 31, pct: '24.2%' },
-  { status: 'COMPLETED', name: '已完成', value: 19, pct: '14.8%' },
-  { status: 'CONFIRMED', name: '已确认', value: 33, pct: '25.8%' },
-  { status: 'CANCELLED', name: '已取消', value: 5, pct: '3.9%' },
-])
+const props = withDefaults(
+  defineProps<{
+    /** 状态分布切片（固定 7 态） */
+    items: StatusSlice[]
+    /** 圆心文案：工单总数 */
+    totalText?: string
+    /** 圆心文案：完成率 */
+    completionText?: string
+  }>(),
+  { totalText: '0', completionText: '完成率 0.0%' },
+)
 
-const total = computed(() => slices.value.reduce((s, i) => s + i.value, 0))
+const slices = computed(() => props.items)
 
 /** 环形生长动画时长（ms） */
 const GROW_DURATION = 1300
@@ -67,7 +71,7 @@ function buildOption(data: StatusSlice[]): EChartsCoreOption {
         left: 'center',
         top: '41%',
         style: {
-          text: String(total.value),
+          text: props.totalText,
           fill: '#0F2137',
           fontSize: 30,
           fontWeight: 'bold',
@@ -88,7 +92,7 @@ function buildOption(data: StatusSlice[]): EChartsCoreOption {
         left: 'center',
         top: '63%',
         style: {
-          text: '完成率 92.6%',
+          text: props.completionText,
           fill: '#2E7D0B',
           fontSize: 11,
           fontWeight: 'bold',
@@ -152,7 +156,7 @@ defineExpose({ refresh })
         <i class="dot" :style="{ background: STATUS_COLORS[s.status] }"></i>
         <span class="name">{{ s.name }}</span>
         <b class="num">{{ s.value }}</b>
-        <span class="pct num">{{ s.pct }}</span>
+        <span class="pct num">{{ s.pct }}%</span>
       </li>
     </ul>
   </div>

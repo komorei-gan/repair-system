@@ -31,7 +31,10 @@ async function load(): Promise<void> {
 }
 
 function goBack(): void {
-  void router.push({ name: 'orders' })
+  // 返回列表页并恢复之前的 Tab 状态（从 query.status 读取；无则回「全部」）
+  const status = route.query.status
+  const query = typeof status === 'string' && status ? { status } : {}
+  void router.push({ name: 'orders', query })
 }
 
 /** 状态胶囊配色（与列表页一致） */

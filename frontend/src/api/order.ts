@@ -30,6 +30,11 @@ export function assignOrder(id: number, repairerId: number): Promise<void> {
   return http.put<void>(`/api/admin/orders/${id}/assign`, { repairerId })
 }
 
+/** 管理员改派（ASSIGNED/PROCESSING → ASSIGNED，换师傅） */
+export function reassignOrder(id: number, repairerId: number): Promise<void> {
+  return http.put<void>(`/api/admin/orders/${id}/reassign`, { repairerId })
+}
+
 /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
 export function pendingCount(): Promise<number> {
   return http.get<number>('/api/admin/orders/pending-count')

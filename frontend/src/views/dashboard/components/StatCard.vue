@@ -5,10 +5,27 @@
  * - 刷新信号（refreshKey 变化）：数字重新从 0 滚动
  * - 入场：slideUp 0.4s 由下往上位移 + 淡入
  */
-import { onMounted, watch } from 'vue'
+import { watch } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
-import type { StatItem } from '../mock'
 import IconSvg from '@/components/IconSvg.vue'
+
+/** 指标卡数据项（由父组件 DashboardView 按真实接口构造） */
+export interface StatItem {
+  label: string
+  value: string
+  unit?: string
+  pct?: string
+  /** 环比文案；后端不提供环比时省略，整行 stat-foot 不渲染 */
+  deltaText?: string
+  /** 辅助说明；后端不提供时省略 */
+  note?: string
+  icon: string
+  iconCls: string
+  featured?: boolean
+  /** 环比类型：up 橙 / down 绿 / flat 蓝（有 deltaText 时使用） */
+  deltaCls?: 'up' | 'down' | 'flat'
+  progress?: number
+}
 
 const props = withDefaults(
   defineProps<{
@@ -31,7 +48,20 @@ const { formatted, start } = useCountUp(() => parseFloat(props.item.value), {
   delay: 260 + props.delay * 1000,
 })
 
-onMounted(start)
+/**
+ * 数字滚动触发时机（修正首屏全为 0 的问题）：
+ * - 首屏不在 onMounted 里滚，而是等接口返回、item.value 由 '0' 变为真实值后再滚；
+ * - refreshKey 变化（手动刷新）时无条件重滚，即使数值未变。
+ */
+watch(
+  () => props.item.value,
+  (value, prev) => {
+    // 首次拿到非 0 真实数据时滚动（避免在接口返回前滚到 0）
+    if (value !== prev && parseFloat(value) > 0) {
+      start()
+    }
+  },
+)
 
 watch(
   () => props.refreshKey,
@@ -61,14 +91,14 @@ watch(
       <span :style="{ width: item.progress + '%' }"></span>
     </div>
 
-    <div class="stat-foot" :style="item.progress ? 'margin-top:8px' : ''">
-      <span class="delta" :class="item.deltaCls">
+    <div v-if="item.deltaText || item.note" class="stat-foot" :style="item.progress ? 'margin-top:8px' : ''">
+      <span v-if="item.deltaText" class="delta" :class="item.deltaCls">
         <span class="delta-ico" :class="{ rot: item.deltaCls === 'down' }">
           <IconSvg name="i-trending-up" :size="11" />
         </span>
         {{ item.deltaText }}
       </span>
-      <span class="foot-note">{{ item.note }}</span>
+      <span v-if="item.note" class="foot-note">{{ item.note }}</span>
     </div>
   </article>
 </template>

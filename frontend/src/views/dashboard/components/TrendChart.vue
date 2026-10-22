@@ -11,7 +11,8 @@
  * ★ 空态必须保留 grid / xAxis / yAxis：
  *   坐标系一旦缺失，ECharts 会连坐标轴一起重算，折线直接从“无中生有”地出现，
  *   而不是在既有坐标系内从左向右生长。因此空态只置空 series.data。
- * ★ y 轴 min/max 固定：否则空态与真实数据的轴范围不同，生长过程会伴随纵向跳变。
+ * ★ y 轴 min=0 / max 按数据动态向上取整：空态与真实数据共用同一轴范围，
+ *   生长过程不伴随纵向跳变，也不会因写死上限截断或留白。
  */
 import { computed, ref } from 'vue'
 import * as echarts from 'echarts/core'
@@ -20,7 +21,6 @@ import { GridComponent, TooltipComponent, MarkPointComponent } from 'echarts/com
 import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsCoreOption } from 'echarts/core'
-import { TREND_DAYS, TREND_DONE, TREND_NEW } from '../mock'
 import BaseChart from '@/components/charts/BaseChart.vue'
 
 echarts.use([
@@ -33,14 +33,31 @@ echarts.use([
   CanvasRenderer,
 ])
 
-/** 与 design-web.html 图一一致的数据（TODO: 接 /api/admin/stats/dashboard） */
-const days = ref<string[]>([...TREND_DAYS])
-const newOrders = ref<number[]>([...TREND_NEW])
-const doneOrders = ref<number[]>([...TREND_DONE])
+const props = withDefaults(
+  defineProps<{
+    /** 近 7 天日期标签（MM-dd） */
+    days: string[]
+    /** 每日新增工单数 */
+    newOrders: number[]
+    /** 每日完成工单数 */
+    doneOrders: number[]
+  }>(),
+  { days: () => [], newOrders: () => [], doneOrders: () => [] },
+)
 
 /** 生长动画时长（ms），从左向右生长 + 面积升起 */
 const GROW_DURATION = 1400
 const GROW_EASING = 'cubicOut'
+
+/** y 轴上限：按数据动态向上取整，避免写死导致截断或过空 */
+const yMax = computed(() => {
+  const peak = Math.max(...props.newOrders, ...props.doneOrders, 10)
+  const step = 15
+  return Math.max(step, Math.ceil(peak / step) * step)
+})
+
+/** y 轴刻度间隔（按上限等分 4 档左右） */
+const yInterval = computed(() => Math.ceil(yMax.value / 4))
 
 /**
  * 构造 option。
@@ -66,7 +83,7 @@ function buildOption(empty = false): EChartsCoreOption {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: days.value,
+      data: props.days,
       axisLine: { lineStyle: { color: '#DDE9F5' } },
       axisTick: { show: false },
       axisLabel: { color: '#8FA3B8', fontSize: 11, margin: 14 },
@@ -74,8 +91,8 @@ function buildOption(empty = false): EChartsCoreOption {
     yAxis: {
       type: 'value',
       min: 0,
-      max: 70,
-      interval: 15,
+      max: yMax.value,
+      interval: yInterval.value,
       splitLine: { lineStyle: { color: '#ECF3FA' } },
       axisLabel: { color: '#8FA3B8', fontSize: 10.5 },
     },
@@ -88,7 +105,7 @@ function buildOption(empty = false): EChartsCoreOption {
         symbol: 'circle',
         symbolSize: 5,
         showSymbol: false,
-        data: empty ? [] : doneOrders.value,
+        data: empty ? [] : props.doneOrders,
         lineStyle: { width: 2.2, color: '#52C41A', opacity: 0.95 },
         itemStyle: { color: '#52C41A', borderColor: '#fff', borderWidth: 1.5 },
         emphasis: { scale: 1.6 },
@@ -102,7 +119,7 @@ function buildOption(empty = false): EChartsCoreOption {
         symbol: 'circle',
         symbolSize: 6,
         showSymbol: false,
-        data: empty ? [] : newOrders.value,
+        data: empty ? [] : props.newOrders,
         lineStyle: { width: 2.6, color: '#1890FF' },
         itemStyle: { color: '#1890FF', borderColor: '#fff', borderWidth: 2 },
         emphasis: { scale: 1.6 },
@@ -120,8 +137,8 @@ function buildOption(empty = false): EChartsCoreOption {
             ],
           },
         },
-        // 末端圆点：最后一天标记（仅在非空态展示）
-        markPoint: empty
+        // 末端圆点：最后一天标记（仅在非空态且已有数据时展示）
+        markPoint: empty || props.newOrders.length === 0
           ? undefined
           : {
               symbol: 'circle',
@@ -130,7 +147,7 @@ function buildOption(empty = false): EChartsCoreOption {
               data: [
                 {
                   name: '今日',
-                  coord: [days.value.length - 1, newOrders.value[newOrders.value.length - 1]],
+                  coord: [props.days.length - 1, props.newOrders[props.newOrders.length - 1]],
                   itemStyle: { color: '#1890FF', borderColor: '#fff', borderWidth: 2.5 },
                 },
               ],

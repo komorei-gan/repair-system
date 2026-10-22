@@ -1,21 +1,29 @@
 <script setup lang="ts">
 /**
  * 数据看板 —— 结构与样式 1:1 复刻 design-web.html。
- * 指标卡/趋势图/表格数据为 mock（TODO：接 /api/admin/stats/dashboard 与 /api/admin/orders）。
+ * 数据来源：GET /api/admin/stats/dashboard（指标卡/环形图/折线图）与
+ * GET /api/admin/orders?pageSize=5（最新 5 条工单）。
  * 动效：
  * - 指标卡：useCountUp 数字滚动（挂载与刷新时重滚）
  * - 环形图：ECharts 原生过渡，刷新时色块从 0 度顺时针生长（无遮罩）
  */
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { MOCK_ORDERS, STAT_ITEMS, STATUS_TABS, type MockOrderRow } from './mock'
+import { getDashboardStats } from '@/api/dashboard'
+import { adminOrders } from '@/api/order'
+import { listCategories } from '@/api/category'
+import type { Category, OrderStatus, OrderVO } from '@/types/api'
 import { orderStatusCls, orderStatusLabel } from '@/utils/status'
 import IconSvg from '@/components/IconSvg.vue'
+import AssignDialog from '@/components/AssignDialog.vue'
 import TrendChart from './components/TrendChart.vue'
 import StatusDonut from './components/StatusDonut.vue'
-import StatCard from './components/StatCard.vue'
+import StatCard, { type StatItem } from './components/StatCard.vue'
 
-/* ---------- 分段控件 ---------- */
+const router = useRouter()
+
+/* ---------- 分段控件（本轮仅「今日/本周/本月」占位，不影响数据口径） ---------- */
 const rangeTabs = ['今日', '本周', '本月']
 const activeRange = ref('本周')
 const trendRange = ref('近 7 天')
@@ -27,9 +35,36 @@ const refreshKey = ref(0)
 const donutRef = ref<InstanceType<typeof StatusDonut>>()
 const trendRef = ref<InstanceType<typeof TrendChart>>()
 
-/** 模拟拉取数据（TODO: 替换为 GET /api/admin/stats/dashboard） */
+/* ---------- 看板统计与最新工单 ---------- */
+const totalOrders = ref(0)
+const pendingCount = ref(0)
+const processingCount = ref(0)
+const completionRate = ref(0)
+const statusDistribution = ref<{ status: OrderStatus; name: string; count: number; percentage: number }[]>([])
+const trendDays = ref<string[]>([])
+const trendNew = ref<number[]>([])
+const trendDone = ref<number[]>([])
+const orders = ref<OrderVO[]>([])
+const orderTotal = ref(0)
+
+/** 拉取看板统计 + 最新 5 条工单 */
 async function fetchData(): Promise<void> {
-  await new Promise((r) => setTimeout(r, 400))
+  const [stats, orderPage] = await Promise.all([
+    getDashboardStats(),
+    adminOrders({ pageNum: orderPageNum.value, pageSize: orderPageSize.value }),
+  ])
+
+  totalOrders.value = stats.totalOrders
+  pendingCount.value = stats.pendingCount
+  processingCount.value = stats.processingCount
+  completionRate.value = stats.completionRate
+  statusDistribution.value = stats.statusDistribution
+  trendDays.value = stats.trend.map((t) => t.date)
+  trendNew.value = stats.trend.map((t) => t.newCount)
+  trendDone.value = stats.trend.map((t) => t.doneCount)
+
+  orders.value = orderPage.records
+  orderTotal.value = orderPage.total
 }
 
 /** 点击刷新：数字重滚 + 环形图与折线图重新生长 */
@@ -41,24 +76,236 @@ async function onRefresh(): Promise<void> {
   ElMessage.success('数据已刷新')
 }
 
+/** 切换趋势周期：近 7 天保持当前数据，近 30 天暂未实现（二期迭代） */
+function onTrendRange(range: string): void {
+  if (range === '近 30 天') {
+    ElMessage.info('该功能将在二期迭代中上线')
+    return
+  }
+  trendRange.value = range
+}
+
+/** 批量派单：暂未实现（二期迭代） */
+function onBatchAssign(): void {
+  ElMessage.info('该功能将在二期迭代中上线')
+}
+
+/* ---------- 指标卡数据（严格对应后端 totalOrders/pendingCount/processingCount/completionRate） ---------- */
+const statItems = computed<StatItem[]>(() => [
+  {
+    label: '总工单数',
+    value: String(totalOrders.value),
+    unit: '单',
+    icon: 'i-inbox',
+    iconCls: 'blue',
+    featured: true,
+  },
+  {
+    label: '待处理工单',
+    value: String(pendingCount.value),
+    unit: '单',
+    icon: 'i-clock',
+    iconCls: 'amber',
+  },
+  {
+    label: '维修中',
+    value: String(processingCount.value),
+    unit: '单',
+    icon: 'i-wrench',
+    iconCls: 'slate',
+  },
+  {
+    label: '本周完成率',
+    value: completionRate.value.toFixed(1),
+    pct: '%',
+    icon: 'i-check-circle',
+    iconCls: 'green',
+    progress: completionRate.value,
+  },
+])
+
+/* ---------- 环形图与折线图 props ---------- */
+const donutItems = computed(() =>
+  statusDistribution.value.map((i) => ({
+    status: i.status,
+    name: i.name,
+    value: i.count,
+    pct: i.percentage,
+  })),
+)
+
+const donutTotalText = computed(() => String(totalOrders.value))
+const donutCompletionText = computed(() => `完成率 ${completionRate.value.toFixed(1)}%`)
+
+/* ---------- 页头文案：今日日期与今日新增 ---------- */
+const todayLabel = computed(() => {
+  const now = new Date()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日 · ${weekdays[now.getDay()]}`
+})
+
+/** 今日新增数（趋势数组最后一项 newCount） */
+const todayNew = computed(() => trendNew.value[trendNew.value.length - 1] ?? 0)
+
+/** 待受理条数（供列表副标题） */
+const pendingCountLabel = computed(() => pendingCount.value)
+
 /* ---------- 工单表格 ---------- */
-const orders = ref<MockOrderRow[]>(MOCK_ORDERS)
 const activeTab = ref('全部')
 
-function onTab(label: string): void {
-  activeTab.value = label
-  // TODO: 按状态筛选调用 GET /api/admin/orders?status=xxx
+/* ---------- 工单筛选（看板内列表） ---------- */
+const orderKeyword = ref('')
+const orderCategoryId = ref<number | undefined>(undefined)
+const categories = ref<Category[]>([])
+
+/* ---------- 工单分页（看板内最新工单，pageSize 固定 5） ---------- */
+const orderPageNum = ref(1)
+const orderPageSize = ref(5)
+
+/** 当前激活 Tab 对应的状态码（「全部」→ undefined） */
+function currentStatus(): OrderStatus | undefined {
+  const tab = statusTabs.value.find((t) => t.label === activeTab.value)
+  return tab?.status
 }
 
-/** 行操作（视觉稿仅交互提示） */
-function onAction(row: MockOrderRow, action: string): void {
-  const statusLabel = orderStatusLabel(row.status)
-  if (action === 'detail') {
-    ElMessage.info(`查看工单 ${row.orderNo}（${statusLabel}）详情 —— 第二阶段接入`)
-  } else {
-    ElMessage.info(`「${action}」操作将在第二阶段接入真实接口（当前状态：${statusLabel}）`)
+/** 加载看板工单列表（带筛选条件 + 分页） */
+async function loadOrders(): Promise<void> {
+  const page = await adminOrders({
+    pageNum: orderPageNum.value,
+    pageSize: orderPageSize.value,
+    status: currentStatus(),
+    categoryId: orderCategoryId.value,
+    keyword: orderKeyword.value.trim() || undefined,
+  })
+  orders.value = page.records
+  orderTotal.value = page.total
+}
+
+/** 切换看板工单列表页码 */
+function onOrderPageChange(page: number): void {
+  orderPageNum.value = page
+  void loadOrders()
+}
+
+/** 搜索框回车 / 清空：重置页码为 1 后查询 */
+function onOrderSearch(): void {
+  orderPageNum.value = 1
+  void loadOrders()
+}
+
+/** 切换故障分类：重置页码为 1 后查询 */
+function onCategoryChange(): void {
+  orderPageNum.value = 1
+  void loadOrders()
+}
+
+/** 切换状态 Tab：重置页码为 1 后按状态查询 */
+function onTab(label: string): void {
+  activeTab.value = label
+  orderPageNum.value = 1
+  void loadOrders()
+}
+
+/** 状态 Tab：由状态分布真实计数构造（全部 + 7 态） */
+const statusTabs = computed(() => {
+  const all = statusDistribution.value.reduce((sum, i) => sum + i.count, 0)
+  return [
+    { label: '全部', count: all, status: undefined as OrderStatus | undefined },
+    ...statusDistribution.value.map((i) => ({
+      label: i.name,
+      count: i.count,
+      status: i.status as OrderStatus,
+    })),
+  ]
+})
+
+/** 加载故障分类（失败不阻塞，拦截器已提示） */
+async function loadCategories(): Promise<void> {
+  try {
+    categories.value = await listCategories()
+  } catch {
+    categories.value = []
   }
 }
+
+/* ---------- 派单 / 改派弹窗 ---------- */
+const assignDialogVisible = ref(false)
+const assignMode = ref<'assign' | 'reassign'>('assign')
+const assignTarget = ref<OrderVO | null>(null)
+
+/** 打开派单弹窗（PENDING → ASSIGNED） */
+function openAssign(row: OrderVO): void {
+  assignTarget.value = row
+  assignMode.value = 'assign'
+  assignDialogVisible.value = true
+}
+
+/** 打开改派弹窗（ASSIGNED/PROCESSING → ASSIGNED） */
+function openReassign(row: OrderVO): void {
+  assignTarget.value = row
+  assignMode.value = 'reassign'
+  assignDialogVisible.value = true
+}
+
+/** 派单/改派成功后：刷新列表与顶部统计图表 */
+function onAssignSuccess(): void {
+  void fetchData()
+  refreshKey.value += 1
+  donutRef.value?.refresh()
+  trendRef.value?.refresh()
+}
+
+/** 行操作：详情 / 跟进 跳转详情页；派单 / 改派 打开对应弹窗 */
+function onAction(row: OrderVO, action: string): void {
+  if (action === 'detail' || action === '跟进') {
+    void router.push({ name: 'order-detail', params: { id: row.id } })
+    return
+  }
+  if (action === '派单') {
+    openAssign(row)
+    return
+  }
+  if (action === '改派') {
+    openReassign(row)
+  }
+}
+
+/* ---------- 工单行展示辅助 ---------- */
+/** 分类名 → 固定配色（与视觉稿一致，按名字哈希轮转） */
+function catCls(categoryName: string): string {
+  const palette = ['c-blue', 'c-cyan', 'c-green', 'c-amber', 'c-steel']
+  let hash = 0
+  for (let i = 0; i < categoryName.length; i += 1) {
+    hash = (hash * 31 + categoryName.charCodeAt(i)) >>> 0
+  }
+  return palette[hash % palette.length]
+}
+
+/** 姓名首字 + 按名字哈希选头像配色 */
+function avatarCls(name: string): string {
+  const palette = ['av-1', 'av-2', 'av-3', 'av-4', 'av-5']
+  let hash = 0
+  for (let i = 0; i < name.length; i += 1) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  }
+  return palette[hash % palette.length]
+}
+
+function initial(name: string): string {
+  return name?.charAt(0) ?? '?'
+}
+
+/** createdAt(2026-10-21 14:32:00) → { date: '10-21', time: '14:32' } */
+function splitTime(createdAt: string): { date: string; time: string } {
+  const m = createdAt?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  if (!m) return { date: createdAt ?? '', time: '' }
+  return { date: `${m[2]}-${m[3]}`, time: `${m[4]}:${m[5]}` }
+}
+
+onMounted(() => {
+  void loadCategories()
+  void fetchData()
+})
 </script>
 
 <template>
@@ -71,11 +318,11 @@ function onAction(row: MockOrderRow, action: string): void {
           <span class="live-chip"><i></i>实时</span>
         </h1>
         <p class="page-sub">
-          <span>2026 年 10 月 21 日 · 周三</span>
+          <span>{{ todayLabel }}</span>
           <span class="sep">/</span>
           <span>校园后勤保障中心</span>
           <span class="sep">/</span>
-          <span>今日已处理 39 单</span>
+          <span>今日新增 {{ todayNew }} 单</span>
         </p>
       </div>
       <div class="page-actions">
@@ -104,7 +351,7 @@ function onAction(row: MockOrderRow, action: string): void {
     <!-- ============ 指标卡（数字滚动 + slideUp 渐显） ============ -->
     <section class="stats" aria-label="核心指标">
       <StatCard
-        v-for="(s, i) in STAT_ITEMS"
+        v-for="(s, i) in statItems"
         :key="s.label"
         :item="s"
         :refresh-key="refreshKey"
@@ -127,7 +374,7 @@ function onAction(row: MockOrderRow, action: string): void {
               type="button"
               role="tab"
               :aria-selected="trendRange === t"
-              @click="trendRange = t"
+              @click="onTrendRange(t)"
             >
               {{ t }}
             </button>
@@ -141,7 +388,7 @@ function onAction(row: MockOrderRow, action: string): void {
         </div>
 
         <div class="chart-wrap">
-          <TrendChart ref="trendRef" />
+          <TrendChart ref="trendRef" :days="trendDays" :new-orders="trendNew" :done-orders="trendDone" />
         </div>
       </article>
 
@@ -151,10 +398,15 @@ function onAction(row: MockOrderRow, action: string): void {
             <h2>工单状态分布</h2>
             <p>本周全部工单构成</p>
           </div>
-          <span class="chip">共 128 单</span>
+          <span class="chip">共 {{ totalOrders }} 单</span>
         </div>
 
-        <StatusDonut ref="donutRef" />
+        <StatusDonut
+          ref="donutRef"
+          :items="donutItems"
+          :total-text="donutTotalText"
+          :completion-text="donutCompletionText"
+        />
       </article>
     </section>
 
@@ -163,24 +415,35 @@ function onAction(row: MockOrderRow, action: string): void {
       <div class="table-head">
         <div class="title-wrap">
           <h2 id="orderListTitle">工单列表</h2>
-          <p>共 <b>128</b> 条工单 · <b>18</b> 条待受理，建议优先派单</p>
+          <p>共 <b>{{ orderTotal }}</b> 条工单 · <b>{{ pendingCountLabel }}</b> 条待受理，建议优先派单</p>
         </div>
         <div class="toolbar">
           <div class="search-field">
             <IconSvg name="i-search" :size="15" />
-            <input type="search" placeholder="搜索工单号 / 标题 / 报修人" aria-label="搜索工单" />
+            <input
+              v-model="orderKeyword"
+              type="search"
+              placeholder="搜索工单号 / 标题 / 报修人"
+              aria-label="搜索工单"
+              @keyup.enter="onOrderSearch"
+              @search="onOrderSearch"
+            />
           </div>
-          <button type="button" class="select-btn">
-            <IconSvg name="i-filter" :size="14" />
-            故障分类
-            <IconSvg name="i-chevron-down" :size="12" />
-          </button>
+          <el-select
+            v-model="orderCategoryId"
+            class="category-select"
+            placeholder="故障分类"
+            clearable
+            @change="onCategoryChange"
+          >
+            <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
           <button type="button" class="select-btn">
             <IconSvg name="i-calendar" :size="14" />
             近 7 天
             <IconSvg name="i-chevron-down" :size="12" />
           </button>
-          <button type="button" class="btn btn-primary btn-sm">
+          <button type="button" class="btn btn-primary btn-sm" @click="onBatchAssign">
             <IconSvg name="i-send" :size="14" />
             批量派单
           </button>
@@ -189,7 +452,7 @@ function onAction(row: MockOrderRow, action: string): void {
 
       <div class="tabs" role="tablist" aria-label="按状态筛选工单">
         <button
-          v-for="t in STATUS_TABS"
+          v-for="t in statusTabs"
           :key="t.label"
           type="button"
           class="tab"
@@ -228,29 +491,32 @@ function onAction(row: MockOrderRow, action: string): void {
                 /></label>
               </td>
               <td class="order-cell">
-                <div class="order-no">
-                  {{ row.orderNo }}
-                  <span v-if="row.urgent" class="tag-urgent">紧急</span>
-                </div>
+                <div class="order-no">{{ row.orderNo }}</div>
                 <span class="order-title">{{ row.title }}</span>
                 <span class="order-addr">
                   <IconSvg name="i-pin" :size="11" />
                   {{ row.address }}
                 </span>
               </td>
-              <td><span class="cat" :class="row.catCls"><i></i>{{ row.category }}</span></td>
+              <td>
+                <span class="cat" :class="catCls(row.categoryName ?? '')">
+                  <i></i>{{ row.categoryName ?? '未分类' }}
+                </span>
+              </td>
               <td>
                 <div class="person">
-                  <span class="avatar" :class="row.reporter.avatarCls">{{ row.reporter.avatar }}</span>
-                  <span>{{ row.reporter.name }}</span>
+                  <span class="avatar" :class="avatarCls(row.reporterName ?? '?')">{{
+                    initial(row.reporterName ?? '?')
+                  }}</span>
+                  <span>{{ row.reporterName ?? '未知' }}</span>
                 </div>
               </td>
               <td>
-                <div v-if="row.repairer" class="person">
-                  <span class="avatar" :class="row.repairer.avatarCls">{{
-                    row.repairer.name.charAt(0)
+                <div v-if="row.repairerName" class="person">
+                  <span class="avatar" :class="avatarCls(row.repairerName)">{{
+                    initial(row.repairerName)
                   }}</span>
-                  <span>{{ row.repairer.name }}</span>
+                  <span>{{ row.repairerName }}</span>
                 </div>
                 <span v-else class="unassigned">
                   <IconSvg name="i-plus" :size="11" />
@@ -263,7 +529,7 @@ function onAction(row: MockOrderRow, action: string): void {
                 </span>
               </td>
               <td class="time-cell">
-                {{ row.date }}<small>{{ row.time }}</small>
+                {{ splitTime(row.createdAt).date }}<small>{{ splitTime(row.createdAt).time }}</small>
               </td>
               <td>
                 <div class="row-actions">
@@ -291,27 +557,30 @@ function onAction(row: MockOrderRow, action: string): void {
       </div>
 
       <div class="table-foot">
-        <span class="foot-info">共 <b>128</b> 条工单，本页显示 <b>6</b> 条</span>
-        <nav class="pager" aria-label="分页">
-          <button type="button" aria-label="上一页" disabled style="opacity: 0.45; cursor: not-allowed">
-            <IconSvg name="i-chevron-left" :size="14" />
-          </button>
-          <button type="button" aria-current="page">1</button>
-          <button type="button">2</button>
-          <button type="button">3</button>
-          <span class="gap">···</span>
-          <button type="button">22</button>
-          <button type="button" aria-label="下一页">
-            <IconSvg name="i-chevron-right" :size="14" />
-          </button>
-        </nav>
+        <span class="foot-info">共 <b>{{ orderTotal }}</b> 条工单，本页显示 <b>{{ orders.length }}</b> 条</span>
+        <el-pagination
+          v-model:current-page="orderPageNum"
+          :page-size="orderPageSize"
+          :total="orderTotal"
+          layout="total, prev, pager, next"
+          background
+          @current-change="onOrderPageChange"
+        />
       </div>
     </section>
 
     <footer class="page-foot">
       <span class="dot" aria-hidden="true"></span>
-      数据每 30 秒自动刷新 · 最后同步 14:36:20
+      数据实时统计 · 点击右上角刷新同步最新数据
     </footer>
+
+    <!-- 派单 / 改派 弹窗（与工单列表页复用同一组件） -->
+    <AssignDialog
+      v-model="assignDialogVisible"
+      :mode="assignMode"
+      :order="assignTarget"
+      @success="onAssignSuccess"
+    />
   </div>
 </template>
 
@@ -623,6 +892,22 @@ function onAction(row: MockOrderRow, action: string): void {
   border-color: var(--blue-500);
   background: #fff;
   box-shadow: var(--ring);
+}
+/* 故障分类下拉（替换原「故障分类」占位按钮，样式与工具栏其余控件对齐） */
+.category-select {
+  width: 148px;
+  flex: none;
+}
+.category-select :deep(.el-select__wrapper) {
+  height: 38px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.category-select :deep(.el-select__wrapper:hover) {
+  box-shadow: inset 0 0 0 1px var(--blue-200);
+}
+.category-select :deep(.el-select__wrapper.is-focused) {
+  box-shadow: inset 0 0 0 1px var(--blue-500), var(--ring);
 }
 .select-btn {
   height: 38px;
@@ -1192,6 +1477,10 @@ tr:hover .order-title {
   }
   .search-field input {
     width: 100%;
+  }
+  .category-select {
+    flex: 1;
+    min-width: 150px;
   }
   .table-foot {
     padding: 12px 16px;

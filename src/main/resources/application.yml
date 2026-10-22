@@ -28,8 +28,8 @@ logging:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    # 开发期打印 SQL，上线改为 org.apache.ibatis.logging.nologging.NoLoggingImpl
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 关闭控制台 SQL 打印（如需排查 SQL 再改回 StdOutImpl）
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
     banner: false
     db-config:
