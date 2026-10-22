@@ -27,6 +27,11 @@ export function markRead(id: number): Promise<void> {
   return http.put<void>(`/api/notifications/${id}/read`)
 }
 
+/** 标记单条未读（幂等） */
+export function markUnread(id: number): Promise<void> {
+  return http.put<void>(`/api/notifications/${id}/unread`)
+}
+
 /** 全部标记已读 */
 export function markAllRead(): Promise<void> {
   return http.put<void>('/api/notifications/read-all')

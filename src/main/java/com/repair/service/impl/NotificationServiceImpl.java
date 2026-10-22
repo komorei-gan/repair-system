@@ -49,15 +49,22 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional(rollbackFor = Exception.class)
     public void markRead(Long notificationId) {
         LoginUser current = SecurityUtil.getCurrentUser();
-        Notification notification = notificationMapper.selectById(notificationId);
-        if (notification == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND);
-        }
-        // 只能标记自己的通知，防止越权改他人数据
-        if (!Objects.equals(notification.getUserId(), current.getUserId())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
-        markReadInternal(notificationId, current.getUserId());
+        Notification notification = requireOwnNotification(notificationId, current);
+        markReadInternal(notification.getId(), current.getUserId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markUnread(Long notificationId) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        Notification notification = requireOwnNotification(notificationId, current);
+        // 条件更新（is_read=1 才更新），重复标记未读时影响 0 行，按幂等处理
+        notificationMapper.update(null, new UpdateWrapper<Notification>()
+                .eq("id", notification.getId())
+                .eq("user_id", current.getUserId())
+                .eq("is_read", 1)
+                .set("is_read", 0)
+                .set("read_time", null));
     }
 
     @Override
@@ -69,6 +76,19 @@ public class NotificationServiceImpl implements NotificationService {
                 .eq("is_read", 0)
                 .set("is_read", 1)
                 .set("read_time", LocalDateTime.now()));
+    }
+
+    /** 校验通知存在且属于当前用户，返回通知实体 */
+    private Notification requireOwnNotification(Long notificationId, LoginUser current) {
+        Notification notification = notificationMapper.selectById(notificationId);
+        if (notification == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        // 只能操作自己的通知，防止越权改他人数据
+        if (!Objects.equals(notification.getUserId(), current.getUserId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        return notification;
     }
 
     /** 条件更新（is_read=0 才更新），重复标记已读时影响 0 行，按幂等处理 */

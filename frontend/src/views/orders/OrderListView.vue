@@ -153,12 +153,15 @@ function statusTagStyle(status: OrderStatus): Record<string, string> {
   }
 }
 
-/* ---------- 详情跳转：把当前 status 通过 query 带过去 ---------- */
+/* ---------- 详情跳转：把当前 status 通过 query 带过去，并带上来源页 ---------- */
 function goDetail(row: OrderVO): void {
   void router.push({
     name: 'order-detail',
     params: { id: row.id },
-    query: activeTab.value === 'ALL' ? {} : { status: activeTab.value },
+    query: {
+      from: route.path,
+      ...(activeTab.value === 'ALL' ? {} : { status: activeTab.value }),
+    },
   })
 }
 

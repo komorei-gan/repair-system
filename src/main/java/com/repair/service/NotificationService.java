@@ -21,6 +21,9 @@ public interface NotificationService {
     /** 标记单条已读（幂等：已读的重复标记直接成功） */
     void markRead(Long notificationId);
 
+    /** 标记单条未读（幂等：未读的重复标记直接成功） */
+    void markUnread(Long notificationId);
+
     /** 全部标记已读 */
     void markAllRead();
 }

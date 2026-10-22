@@ -26,6 +26,10 @@ export interface UserInfo {
   /** 角色：ADMIN 管理员 / REPAIRER 师傅 / REPORTER 报修人 */
   role: 'ADMIN' | 'REPAIRER' | 'REPORTER'
   avatar: string | null
+  /** 1 启用 / 0 禁用（管理端用户列表展示） */
+  status?: number
+  /** 创建时间（管理端用户列表展示） */
+  createdAt?: string
 }
 
 /** 登录响应：token + 用户信息 */

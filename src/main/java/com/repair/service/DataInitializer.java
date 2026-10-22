@@ -5,10 +5,12 @@ import com.repair.common.enums.OrderStatus;
 import com.repair.common.enums.RoleEnum;
 import com.repair.common.util.OrderNoUtil;
 import com.repair.entity.Category;
+import com.repair.entity.Notification;
 import com.repair.entity.OrderLog;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
 import com.repair.mapper.CategoryMapper;
+import com.repair.mapper.NotificationMapper;
 import com.repair.mapper.OrderLogMapper;
 import com.repair.mapper.RepairOrderMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +24,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
  * 数据初始化（幂等，仅首次启动创建）：
@@ -71,6 +75,8 @@ public class DataInitializer implements CommandLineRunner {
 
     private final OrderLogMapper orderLogMapper;
 
+    private final NotificationMapper notificationMapper;
+
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -80,6 +86,105 @@ public class DataInitializer implements CommandLineRunner {
         initRepairers();
         initSeedOrders();
         backfillMissingLogs();
+        repairMojibakeTitles();
+        cleanupOrphanNotifications();
+    }
+
+    /**
+     * 清理孤儿通知：order_id 指向的工单已不存在（含被逻辑删除）的通知一律物理删除。
+     * 这类「死链」多产生于测试期：工单被删除后，冗余写入 notification 的快照仍在，
+     * 用户点击会跳到详情页并报「工单不存在」。每次启动执行，天然幂等（无死链时零写库）。
+     *
+     * <p>判定口径：repair_order 存在逻辑删除字段 deleted，
+     * {@code selectBatchIds} 会自动过滤 deleted=1 的行，因此「已删除工单」也会被判为孤儿。
+     */
+    private void cleanupOrphanNotifications() {
+        List<Notification> bound = notificationMapper.selectList(new LambdaQueryWrapper<Notification>()
+                .isNotNull(Notification::getOrderId));
+        if (bound.isEmpty()) {
+            return;
+        }
+
+        Set<Long> orderIds = bound.stream()
+                .map(Notification::getOrderId)
+                .collect(Collectors.toSet());
+        Set<Long> aliveOrderIds = repairOrderMapper.selectBatchIds(orderIds).stream()
+                .map(RepairOrder::getId)
+                .collect(Collectors.toSet());
+
+        List<Long> orphanIds = bound.stream()
+                .filter(n -> !aliveOrderIds.contains(n.getOrderId()))
+                .map(Notification::getId)
+                .toList();
+        if (orphanIds.isEmpty()) {
+            return;
+        }
+
+        notificationMapper.deleteByIds(orphanIds);
+        log.warn("已清理 {} 条关联工单已删除的死链通知（order_id 无对应 repair_order）", orphanIds.size());
+    }
+
+    /**
+     * 修复历史脏数据：工单标题被写成一串问号（如「??????????」）。
+     * 根因：早前 JDBC 连接未启用 utf8mb4，emoji 等 4 字节字符在写入时被 MySQL
+     * 替换为「?」，通知内容（冗余标题）随之乱码。连接串修复后不会再产生新脏数据，
+     * 本方法负责把残留的问号标题改写为可读占位文案（幂等：仅命中全问号标题）。
+     */
+    private void repairMojibakeTitles() {
+        List<RepairOrder> orders = repairOrderMapper.selectList(new LambdaQueryWrapper<RepairOrder>()
+                .likeRight(RepairOrder::getTitle, "?"));
+        int fixed = 0;
+        for (RepairOrder order : orders) {
+            String title = order.getTitle();
+            if (title == null || !title.chars().allMatch(c -> c == '?')) {
+                continue;
+            }
+            String fixedTitle = "历史工单（原标题字符集损坏）";
+            repairOrderMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<RepairOrder>()
+                    .eq("id", order.getId())
+                    .eq("title", title)
+                    .set("title", fixedTitle)
+                    .set("description", fixedTitle));
+            fixed++;
+        }
+        if (fixed > 0) {
+            log.warn("已修复 {} 条标题乱码（全问号）的历史工单", fixed);
+            repairMojibakeNotifications();
+        }
+    }
+
+    /**
+     * 修复通知表中冗余的乱码内容：标题/内容里残留成串「?」的历史通知。
+     * 仅在修复过工单脏数据时触发一次（通知冗余的是同一批脏标题），
+     * 将内容里的问号串替换为占位文案，避免前端面板继续展示乱码。
+     */
+    private void repairMojibakeNotifications() {
+        List<Notification> notifications = notificationMapper.selectList(null);
+        int fixed = 0;
+        for (Notification n : notifications) {
+            String title = n.getTitle();
+            String content = n.getContent();
+            boolean titleBad = title != null && title.chars().allMatch(c -> c == '?');
+            boolean contentBad = content != null && content.contains("?????");
+            if (!titleBad && !contentBad) {
+                continue;
+            }
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Notification> wrapper =
+                    new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Notification>()
+                            .eq("id", n.getId());
+            if (titleBad) {
+                wrapper.set("title", "历史通知（原文字符集损坏）");
+            }
+            if (contentBad) {
+                String cleaned = content.replaceAll("\\?{3,}", "……");
+                wrapper.set("content", cleaned);
+            }
+            notificationMapper.update(null, wrapper);
+            fixed++;
+        }
+        if (fixed > 0) {
+            log.warn("已修复 {} 条内容乱码的历史通知", fixed);
+        }
     }
 
     private void initAdmin() {

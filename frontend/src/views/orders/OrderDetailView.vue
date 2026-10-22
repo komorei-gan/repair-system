@@ -5,6 +5,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import * as orderApi from '@/api/order'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
 import type { OrderDetailVO, OrderStatus } from '@/types/api'
@@ -15,23 +16,44 @@ const router = useRouter()
 
 const loading = ref(false)
 const detail = ref<OrderDetailVO | null>(null)
+/** 加载失败原因（工单被删除 / 无权限 / 网络异常），为空表示尚未失败 */
+const errorText = ref('')
 
 const orderId = computed(() => Number(route.params.id))
 
 async function load(): Promise<void> {
-  if (!Number.isFinite(orderId.value)) return
+  errorText.value = ''
+  if (!Number.isFinite(orderId.value)) {
+    errorText.value = '工单编号无效'
+    return
+  }
   loading.value = true
   try {
     detail.value = await orderApi.orderDetail(orderId.value)
+    if (!detail.value) {
+      // 后端返回空数据（异常兜底）同样按不存在处理
+      errorText.value = '该工单已被删除或不存在'
+    }
   } catch {
+    // 接口非 200：后端对不存在/无权限统一返回 ORDER_NOT_FOUND
     detail.value = null
+    errorText.value = '该工单已被删除或不存在'
+    ElMessage.error(errorText.value)
+    // 延迟退回列表页，让用户先看到提示（1.2s 后再跳，避免提示瞬间被页面切换打断）
+    window.setTimeout(() => goBack(), 1200)
   } finally {
     loading.value = false
   }
 }
 
 function goBack(): void {
-  // 返回列表页并恢复之前的 Tab 状态（从 query.status 读取；无则回「全部」）
+  // 通用化返回：优先回「来源页」（from 参数），缺省回工单列表。
+  const from = route.query.from
+  if (typeof from === 'string' && from) {
+    void router.push(from)
+    return
+  }
+  // 无来源时回列表页，并恢复之前的 Tab 状态（从 query.status 读取；无则回「全部」）
   const status = route.query.status
   const query = typeof status === 'string' && status ? { status } : {}
   void router.push({ name: 'orders', query })
@@ -122,7 +144,12 @@ onMounted(load)
         </section>
       </template>
 
-      <el-empty v-else-if="!loading" description="工单不存在或无权查看" />
+      <div v-else-if="!loading" class="not-found">
+        <el-empty :description="errorText || '该工单已被删除或不存在'">
+          <el-button type="primary" @click="goBack">返回列表</el-button>
+        </el-empty>
+        <p v-if="errorText" class="not-found-tip">即将自动返回工单列表…</p>
+      </div>
     </div>
   </div>
 </template>
@@ -165,6 +192,17 @@ onMounted(load)
 
 .detail-body {
   min-height: 320px;
+}
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 0;
+}
+.not-found-tip {
+  font-size: 12px;
+  color: var(--muted-2);
 }
 .info-card,
 .logs-card {

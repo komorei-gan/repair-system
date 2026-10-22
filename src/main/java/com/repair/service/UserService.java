@@ -1,5 +1,8 @@
 package com.repair.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.repair.common.result.PageResult;
+import com.repair.dto.UserInfoVO;
 import com.repair.entity.User;
 
 import java.util.List;
@@ -29,4 +32,10 @@ public interface UserService {
 
     /** 按角色查询启用中的用户（如 REPAIRER），供派单选择师傅 */
     List<User> listEnabledByRole(String role);
+
+    /** 用户管理分页查询：支持关键字（姓名/账号模糊）与角色筛选 */
+    PageResult<UserInfoVO> pageUsers(Page<User> page, String keyword, String role);
+
+    /** 启用/禁用用户（status: 1 启用 / 0 禁用） */
+    void updateStatus(Long id, Integer status);
 }

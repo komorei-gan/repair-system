@@ -6,8 +6,10 @@ spring:
     name: repair-system
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # createDatabaseIfNotExist=true：首次启动自动创建 repair_system 库
-    url: jdbc:mysql://localhost:3306/repair_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
+    # createDatabaseIfNotExist=true：首次启动自动创建 repair_system 库；
+    # connectionCollation 强制会话使用 utf8mb4_unicode_ci，配合 characterEncoding=UTF-8
+    # 保证 emoji 等 4 字节字符完整写入，避免被替换为「?」（通知/工单标题乱码的根因）。
+    url: jdbc:mysql://localhost:3306/repair_system?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:mysql}
   sql:

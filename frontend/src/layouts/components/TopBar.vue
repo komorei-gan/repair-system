@@ -2,10 +2,9 @@
 /**
  * 顶栏 —— 面包屑、搜索、帮助、铃铛（30s 轮询未读数）、用户信息、登出。
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import * as notifApi from '@/api/notification'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import IconSvg from '@/components/IconSvg.vue'
@@ -16,26 +15,15 @@ const router = useRouter()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
-const unread = ref(0)
 let pollTimer: number | undefined
 
 const pageTitle = computed(() => String(route.meta.title ?? ''))
 
-/** 30s 轮询未读数（design.md §4.2），失败静默保留上次值 */
-async function refreshUnread(): Promise<void> {
-  try {
-    const res = await notifApi.unreadCount()
-    unread.value = Number(res.unreadCount ?? 0)
-  } catch {
-    /* 后端未启动时静默 */
-  }
-}
-
 onMounted(() => {
-  void refreshUnread()
+  void appStore.refreshUnreadCount()
   void appStore.refreshPendingCount()
   pollTimer = window.setInterval(() => {
-    void refreshUnread()
+    void appStore.refreshUnreadCount()
     void appStore.refreshPendingCount()
   }, 30_000)
   document.addEventListener('click', onDocClick)
@@ -50,6 +38,19 @@ function toggleNotif(): void {
   appStore.toggleNotif()
 }
 
+/**
+ * 面板底部「查看全部通知」：
+ * 1) 跳转通知中心（router.push('/notifications')）；
+ * 2) 关闭弹出面板；
+ * 3) 左侧菜单高亮由 SidebarNav 依据 route.name 自动同步，无需额外处理。
+ */
+function onViewAllNotices(): void {
+  appStore.toggleNotif(false)
+  if (route.name !== 'notifications') {
+    void router.push('/notifications')
+  }
+}
+
 /** 点击面板外部关闭 */
 function onDocClick(e: MouseEvent): void {
   const wrap = document.getElementById('notif-wrap')
@@ -59,19 +60,37 @@ function onDocClick(e: MouseEvent): void {
   }
 }
 
+/**
+ * 退出登录：
+ * 1) 使用标准 Element Plus 确认框（禁止 window.confirm）；
+ * 2) 确认后清空 Pinia 状态（auth + app）与 localStorage 凭证；
+ * 3) 用 router.replace 跳登录页——不保留历史记录，避免「后退」回到受保护页面。
+ */
 async function onLogout(): Promise<void> {
   try {
     await ElMessageBox.confirm('确定要退出登录吗？', '退出确认', {
       confirmButtonText: '退出',
       cancelButtonText: '取消',
       type: 'warning',
+      // 关闭点击遮罩关闭，避免误触导致意料之外的退出
+      closeOnClickModal: false,
     })
   } catch {
-    return // 用户取消
+    return // 用户取消：不做任何清理
   }
+
+  // 先关闭可能展开的浮层，防止残留 DOM 状态带入登录页
+  appStore.closeOverlays()
+  // 清空 Pinia（auth 内部会同步清掉 localStorage 的 token 与用户缓存）
   authStore.logout()
+  appStore.reset()
+  // 兜底清空 localStorage 中本应用的键（不用 clear()，避免误删第三方数据）
+  localStorage.removeItem('repair_token')
+  localStorage.removeItem('repair_user')
+
   ElMessage.success('已安全退出')
-  void router.push('/login')
+  // replace：不产生历史记录，退出后无法「后退」回到控制台
+  void router.replace('/login')
 }
 </script>
 
@@ -93,12 +112,6 @@ async function onLogout(): Promise<void> {
       <strong>{{ pageTitle }}</strong>
     </nav>
 
-    <div class="topbar-search">
-      <IconSvg name="i-search" :size="15" />
-      <input type="search" placeholder="搜索工单号 / 报修人 / 故障关键词" aria-label="搜索工单" />
-      <kbd>/</kbd>
-    </div>
-
     <div class="topbar-right">
       <button type="button" class="icon-btn" aria-label="帮助中心">
         <IconSvg name="i-help" :size="19" />
@@ -108,18 +121,21 @@ async function onLogout(): Promise<void> {
         <button
           type="button"
           class="icon-btn"
-          :aria-label="`消息通知，${unread} 条未读`"
+          :aria-label="`消息通知，${appStore.unreadCount} 条未读`"
           :aria-expanded="appStore.notifOpen"
           @click="toggleNotif"
         >
           <IconSvg name="i-bell" :size="19" />
-          <span v-if="unread > 0" class="bell-badge">{{ unread > 99 ? '99+' : unread }}</span>
+          <span v-if="appStore.unreadCount > 0" class="bell-badge">
+            {{ appStore.unreadCount > 99 ? '99+' : appStore.unreadCount }}
+          </span>
         </button>
 
         <NotificationPanel
           v-if="appStore.notifOpen"
           id="notif-panel"
-          @read-all="refreshUnread"
+          @read-all="appStore.refreshUnreadCount"
+          @view-all="onViewAllNotices"
         />
       </div>
 
@@ -198,58 +214,6 @@ async function onLogout(): Promise<void> {
 .crumb strong {
   color: var(--ink-2);
   font-weight: 600;
-}
-
-.topbar-search {
-  position: relative;
-  flex: 1;
-  max-width: 360px;
-  margin-left: 8px;
-}
-.topbar-search :deep(.ico) {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #8fa3b8;
-  pointer-events: none;
-}
-.topbar-search input {
-  width: 100%;
-  height: 38px;
-  padding: 0 44px 0 35px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: #f8fbff;
-  color: var(--ink);
-  font-size: 13px;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-}
-.topbar-search input::placeholder {
-  color: #9aadc1;
-}
-.topbar-search input:focus {
-  outline: none;
-  border-color: var(--blue-500);
-  background: #fff;
-  box-shadow: var(--ring);
-}
-.topbar-search kbd {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: inherit;
-  font-size: 11px;
-  color: #93a7bb;
-  border: 1px solid #e3ecf6;
-  background: #fff;
-  border-radius: 5px;
-  min-width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  line-height: 1;
 }
 
 .topbar-right {
@@ -338,13 +302,7 @@ async function onLogout(): Promise<void> {
 }
 
 /* ===== 响应式 ===== */
-@media (max-width: 1024px) {
-  .topbar-search {
-    max-width: 250px;
-  }
-}
 @media (max-width: 860px) {
-  .topbar-search,
   .crumb {
     display: none;
   }

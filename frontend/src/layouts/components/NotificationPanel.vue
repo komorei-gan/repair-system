@@ -4,10 +4,15 @@
  * 数据接真实接口：GET /api/notifications + 全部已读（后端未启动时静默降级为空态）。
  */
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import * as notifApi from '@/api/notification'
+import { useAppStore } from '@/stores/app'
 import { NOTIFICATION_TYPE_META } from '@/utils/status'
 import type { NotificationVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
+
+const router = useRouter()
+const appStore = useAppStore()
 
 const list = ref<NotificationVO[]>([])
 const unreadTotal = ref(0)
@@ -44,7 +49,35 @@ async function onMarkAll(): Promise<void> {
   }
 }
 
-const emit = defineEmits<{ 'read-all': [] }>()
+/**
+ * 点击单条通知：
+ * 1) 调用 PUT /api/notifications/{id}/read 标记该条已读（幂等，失败静默不阻断跳转）；
+ * 2) 关闭通知面板；
+ * 3) 工单通知（有 orderId）跳转工单详情页。
+ */
+async function onReadOne(item: NotificationVO): Promise<void> {
+  if (item.isRead === 0) {
+    try {
+      await notifApi.markRead(item.id)
+      item.isRead = 1
+      // 通知父组件刷新未读角标
+      emit('read-all')
+    } catch {
+      /* 已读标记失败不阻断跳转 */
+    }
+  }
+  appStore.toggleNotif(false)
+  if (item.orderId !== null) {
+    void router.push(`/orders/${item.orderId}`)
+  }
+}
+
+const emit = defineEmits<{ 'read-all': []; 'view-all': [] }>()
+
+/** 查看全部通知：跳转与关闭面板交由父组件（TopBar）统一处理 */
+function onViewAll(): void {
+  emit('view-all')
+}
 
 /** 相对时间格式化 */
 function timeAgo(value: string): string {
@@ -80,6 +113,10 @@ defineExpose({ load })
         :key="n.id"
         class="notif-item"
         :class="{ unread: n.isRead === 0 }"
+        role="button"
+        tabindex="0"
+        @click="onReadOne(n)"
+        @keydown.enter.prevent="onReadOne(n)"
       >
         <div class="notif-ico" :class="NOTIFICATION_TYPE_META[n.type]?.cls ?? 'notif-ico slate'">
           <IconSvg :name="n.type === 'ORDER' ? 'i-clipboard' : 'i-message'" :size="16" />
@@ -93,10 +130,10 @@ defineExpose({ load })
       </article>
     </div>
 
-    <div class="notif-foot">
+    <button type="button" class="notif-foot" @click="onViewAll">
       查看全部通知
       <IconSvg name="i-chevron-right" :size="14" />
-    </div>
+    </button>
   </div>
 </template>
 
@@ -200,6 +237,10 @@ defineExpose({ load })
 .notif-item:hover {
   background: #f8fbff;
 }
+.notif-item:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: -2px;
+}
 .notif-item.unread {
   background: linear-gradient(90deg, #f6faff 0%, #ffffff 72%);
 }
@@ -273,8 +314,12 @@ defineExpose({ load })
   align-items: center;
   justify-content: center;
   gap: 5px;
+  width: 100%;
   padding: 10px;
+  border: 0;
   border-top: 1px solid #f1f6fc;
+  background: none;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   color: var(--blue-600);

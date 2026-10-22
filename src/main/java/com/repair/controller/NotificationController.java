@@ -49,6 +49,13 @@ public class NotificationController {
         return Result.success();
     }
 
+    /** 标记单条未读（幂等） */
+    @PutMapping("/{id}/unread")
+    public Result<Void> markUnread(@PathVariable Long id) {
+        notificationService.markUnread(id);
+        return Result.success();
+    }
+
     /** 全部标记已读 */
     @PutMapping("/read-all")
     public Result<Void> markAllRead() {
