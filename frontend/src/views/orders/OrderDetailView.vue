@@ -173,8 +173,8 @@ onMounted(load)
   padding: 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: 9px;
-  background: #fff;
-  color: #4c647c;
+  background: var(--surface);
+  color: var(--muted);
   font-size: 12.5px;
   cursor: pointer;
   transition: border-color 0.18s, color 0.18s;

@@ -12,6 +12,7 @@ import com.repair.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -76,6 +77,14 @@ public class AdminOrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public Result<Void> cancel(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
         orderService.cancelByAdmin(id, request);
+        return Result.success();
+    }
+
+    /** 删除工单（仅 PENDING/CANCELLED 可逻辑删除） */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Void> delete(@PathVariable Long id) {
+        orderService.deleteByAdmin(id);
         return Result.success();
     }
 }

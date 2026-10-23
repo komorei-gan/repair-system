@@ -10,13 +10,18 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import IconSprite from './components/IconSprite.vue'
+import { applyTheme, getTheme } from './utils/theme'
 
 // 样式引入顺序：EP 基础样式 → 设计令牌 → EP 主题覆盖 → 项目基础样式
 // 顺序保证：先有 EP 默认样式，再用 variables/element.css 覆盖主色与圆角
 import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/variables.css'
 import './styles/element.css'
 import './styles/index.css'
+
+// 启动即应用上次保存的主题（避免刷新后闪烁回浅色）
+applyTheme(getTheme())
 
 const app = createApp(App)
 

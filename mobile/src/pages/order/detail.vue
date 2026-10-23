@@ -385,6 +385,9 @@ onLoad((query) => {
 .timeline-dot.dot-remind {
   background: #fa8c16;
 }
+.timeline-dot.dot-update {
+  background: #909399;
+}
 
 .timeline-line {
   flex: 1;

@@ -42,12 +42,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '派单中心', icon: 'i-send' },
       },
       {
-        path: 'repair-progress',
-        name: 'repair-progress',
-        component: () => import('@/views/repair/RepairProgressView.vue'),
-        meta: { title: '维修进度', icon: 'i-wrench' },
-      },
-      {
         path: 'repairers',
         name: 'repairers',
         component: () => import('@/views/repairer/RepairerView.vue'),

@@ -33,6 +33,9 @@ public interface UserService {
     /** 按角色查询启用中的用户（如 REPAIRER），供派单选择师傅 */
     List<User> listEnabledByRole(String role);
 
+    /** 按角色查询全部用户（含禁用），供师傅业绩榜展示 */
+    List<User> listAllByRole(String role);
+
     /** 用户管理分页查询：支持关键字（姓名/账号模糊）与角色筛选 */
     PageResult<UserInfoVO> pageUsers(Page<User> page, String keyword, String role);
 

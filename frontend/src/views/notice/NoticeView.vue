@@ -272,6 +272,9 @@ onMounted(() => {
   position: relative;
   background: linear-gradient(90deg, #f6faff 0%, #ffffff 72%);
 }
+html.dark .notice-card.unread {
+  background: linear-gradient(90deg, rgba(24, 144, 255, 0.12) 0%, var(--surface) 72%);
+}
 .notice-card.unread::before {
   content: '';
   position: absolute;
@@ -379,7 +382,7 @@ onMounted(() => {
   align-self: center;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface);
   color: var(--muted);
   font-size: 11.5px;
   font-weight: 600;

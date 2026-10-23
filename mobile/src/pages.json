@@ -29,10 +29,24 @@
 			}
 		},
 		{
+			"path": "pages/order/edit",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "修改报修"
+			}
+		},
+		{
 			"path": "pages/order/detail",
 			"style": {
 				"navigationStyle": "custom",
 				"navigationBarTitleText": "工单详情"
+			}
+		},
+		{
+			"path": "pages/login/register",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "注册"
 			}
 		}
 	],

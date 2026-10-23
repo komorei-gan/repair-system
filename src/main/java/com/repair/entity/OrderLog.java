@@ -29,7 +29,7 @@ public class OrderLog implements Serializable {
     /** 操作人角色 */
     private String operatorRole;
 
-    /** 动作：SUBMIT/ASSIGN/ACCEPT/REJECT/FINISH/CONFIRM/CANCEL/REMIND */
+    /** 动作：SUBMIT/ASSIGN/ACCEPT/REJECT/FINISH/CONFIRM/CANCEL/REMIND/UPDATE */
     private String action;
 
     /** 变更前状态 */

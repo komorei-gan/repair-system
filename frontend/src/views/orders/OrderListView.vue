@@ -2,17 +2,17 @@
 /**
  * 工单列表 —— 管理端核心业务页（design.md §3.4）。
  * 能力：状态 Tab 筛选 / 关键字搜索（工单号·标题·报修人）/ 分类筛选 /
- *       分页表格（loading 遮罩）/ 详情跳转 / 待受理工单派单。
+ *       分页表格（loading 遮罩）/ 详情跳转 / 派单 / 改派 / 删除。
  */
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as orderApi from '@/api/order'
 import * as categoryApi from '@/api/category'
-import * as userApi from '@/api/user'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
-import type { Category, OrderStatus, OrderVO, UserInfo } from '@/types/api'
+import type { Category, OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
+import AssignDialog from '@/components/AssignDialog.vue'
 
 /* ---------- 状态 Tab（「ALL」为哨兵值，避免空字符串歧义） ---------- */
 type TabValue = 'ALL' | OrderStatus
@@ -59,13 +59,10 @@ const loading = ref(false)
 const orders = ref<OrderVO[]>([])
 const total = ref(0)
 
-/* ---------- 派单弹窗 ---------- */
+/* ---------- 派单 / 改派弹窗 ---------- */
 const assignDialogVisible = ref(false)
-const assignSubmitting = ref(false)
+const assignMode = ref<'assign' | 'reassign'>('assign')
 const assignTarget = ref<OrderVO | null>(null)
-const repairers = ref<UserInfo[]>([])
-const repairersLoading = ref(false)
-const selectedRepairerId = ref<number | undefined>(undefined)
 
 /** 加载分类列表（失败不阻塞列表，拦截器已提示） */
 async function loadCategories(): Promise<void> {
@@ -165,45 +162,42 @@ function goDetail(row: OrderVO): void {
   })
 }
 
-/* ---------- 派单 ---------- */
+/* ---------- 派单 / 改派 ---------- */
 function openAssign(row: OrderVO): void {
   assignTarget.value = row
-  selectedRepairerId.value = undefined
+  assignMode.value = 'assign'
   assignDialogVisible.value = true
-  if (repairers.value.length === 0) {
-    void loadRepairers()
-  }
 }
 
-/** 拉取启用中的维修师傅列表 */
-async function loadRepairers(): Promise<void> {
-  repairersLoading.value = true
+function openReassign(row: OrderVO): void {
+  assignTarget.value = row
+  assignMode.value = 'reassign'
+  assignDialogVisible.value = true
+}
+
+/** 派单 / 改派成功后刷新列表 */
+function onAssignSuccess(): void {
+  void loadOrders()
+}
+
+/* ---------- 删除 ---------- */
+async function onDelete(row: OrderVO): Promise<void> {
   try {
-    repairers.value = await userApi.listUsersByRole('REPAIRER')
+    await ElMessageBox.confirm(
+      '确定要删除该工单吗？删除后不可恢复',
+      '删除确认',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
   } catch {
-    repairers.value = []
-  } finally {
-    repairersLoading.value = false
+    return // 用户取消
   }
-}
 
-/** 提交派单（PENDING → ASSIGNED） */
-async function submitAssign(): Promise<void> {
-  if (!assignTarget.value) return
-  if (!selectedRepairerId.value) {
-    ElMessage.warning('请选择维修师傅')
-    return
-  }
-  assignSubmitting.value = true
   try {
-    await orderApi.assignOrder(assignTarget.value.id, selectedRepairerId.value)
-    ElMessage.success('派单成功')
-    assignDialogVisible.value = false
+    await orderApi.deleteOrder(row.id)
+    ElMessage.success('工单已删除')
     await loadOrders()
   } catch {
-    // 错误提示已由 axios 拦截器统一处理
-  } finally {
-    assignSubmitting.value = false
+    // 错误提示已由 axios 拦截器统一处理（含「流转中的工单无法删除」）
   }
 }
 
@@ -284,26 +278,32 @@ watch(
         :data="orders"
         row-key="id"
         style="width: 100%"
-        :header-cell-style="{ background: '#f8fbff', color: '#5e7489', fontWeight: 600 }"
+        :header-cell-style="{ background: 'var(--th-bg)', color: 'var(--muted)', fontWeight: 600 }"
       >
-        <el-table-column prop="orderNo" label="工单号" min-width="170" />
-        <el-table-column prop="title" label="故障标题" min-width="230" show-overflow-tooltip />
-        <el-table-column label="分类" width="130">
+        <el-table-column prop="orderNo" label="工单号" min-width="170" align="center" />
+        <el-table-column
+          prop="title"
+          label="故障标题"
+          min-width="230"
+          show-overflow-tooltip
+          align="center"
+        />
+        <el-table-column label="分类" width="130" align="center">
           <template #default="{ row }">{{ row.categoryName || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="reporterName" label="报修人" width="110" />
-        <el-table-column label="维修师傅" width="120">
+        <el-table-column prop="reporterName" label="报修人" width="110" align="center" />
+        <el-table-column label="维修师傅" width="120" align="center">
           <template #default="{ row }">{{ row.repairerName || '-' }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="110">
+        <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <el-tag :style="statusTagStyle(row.status)" size="small" effect="plain">
               {{ orderStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="175" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="createdAt" label="创建时间" width="175" align="center" />
+        <el-table-column label="操作" width="240" fixed="right" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="goDetail(row as OrderVO)">详情</el-button>
             <el-button
@@ -313,6 +313,28 @@ watch(
               @click="openAssign(row as OrderVO)"
             >
               派单
+            </el-button>
+            <el-button
+              v-if="
+                (row as OrderVO).status === 'ASSIGNED' ||
+                (row as OrderVO).status === 'PROCESSING'
+              "
+              link
+              type="primary"
+              @click="openReassign(row as OrderVO)"
+            >
+              改派
+            </el-button>
+            <el-button
+              v-if="
+                (row as OrderVO).status === 'PENDING' ||
+                (row as OrderVO).status === 'CANCELLED'
+              "
+              link
+              type="danger"
+              @click="onDelete(row as OrderVO)"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -336,44 +358,13 @@ watch(
       </div>
     </section>
 
-    <!-- ============ 派单弹窗 ============ -->
-    <el-dialog
+    <!-- ============ 派单 / 改派弹窗（复用公共组件） ============ -->
+    <AssignDialog
       v-model="assignDialogVisible"
-      title="派单"
-      width="440px"
-      :close-on-click-modal="false"
-      destroy-on-close
-    >
-      <div v-if="assignTarget" class="assign-info">
-        <p class="assign-row">工单号：<b>{{ assignTarget.orderNo }}</b></p>
-        <p class="assign-row">故障标题：{{ assignTarget.title }}</p>
-        <p class="assign-row">报修人：{{ assignTarget.reporterName }}</p>
-      </div>
-
-      <el-form label-position="top">
-        <el-form-item label="选择维修师傅" required>
-          <el-select
-            v-model="selectedRepairerId"
-            placeholder="请选择维修师傅"
-            style="width: 100%"
-            :loading="repairersLoading"
-            filterable
-          >
-            <el-option
-              v-for="r in repairers"
-              :key="r.id"
-              :label="r.realName || r.username"
-              :value="r.id"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="assignDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assignSubmitting" @click="submitAssign">确认派单</el-button>
-      </template>
-    </el-dialog>
+      :mode="assignMode"
+      :order="assignTarget"
+      @success="onAssignSuccess"
+    />
   </div>
 </template>
 
@@ -442,23 +433,23 @@ watch(
 
 /* el-table 行 hover 与整体观感微调 */
 .table-card :deep(.el-table) {
-  --el-table-border-color: #f0f6fc;
-  --el-table-row-hover-bg-color: #f8fbff;
+  --el-table-border-color: var(--table-border);
+  --el-table-row-hover-bg-color: var(--row-hover-bg);
   font-size: 12.5px;
 }
 .table-card :deep(.el-table th.el-table__cell) {
   border-bottom: 1px solid var(--line);
 }
 .table-card :deep(.el-table .cell) {
-  color: #3e5872;
+  color: var(--cell-text);
 }
 
 .pagination-bar {
   display: flex;
   justify-content: flex-end;
   padding: 16px 22px;
-  border-top: 1px solid #f2f7fc;
-  background: #fcfefe;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
 /* ===== 派单弹窗 ===== */

@@ -20,6 +20,7 @@ import com.repair.dto.OrderVO;
 import com.repair.dto.ReassignRequest;
 import com.repair.dto.ReasonRequest;
 import com.repair.dto.RepairerStatsVO;
+import com.repair.dto.UpdateOrderRequest;
 import com.repair.entity.Category;
 import com.repair.entity.OrderLog;
 import com.repair.entity.RepairOrder;
@@ -158,6 +159,40 @@ public class OrderServiceImpl implements OrderService {
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
                 "工单已取消",
                 "报修人取消了工单 " + order.getOrderNo() + "，原因：" + request.getReason() + "。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void update(Long id, UpdateOrderRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireReporter(order, current);
+        // 修改不改变状态：仅 PENDING 可改（PENDING→PENDING 不在状态机内，故直接守卫）
+        if (!OrderStatus.PENDING.equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+        Category category = categoryService.getEnabledById(request.getCategoryId());
+
+        int rows = repairOrderMapper.update(null, new UpdateWrapper<RepairOrder>()
+                .eq("id", order.getId())
+                .eq("status", OrderStatus.PENDING)
+                .eq("deleted", 0)
+                .set("category_id", category.getId())
+                .set("title", request.getTitle())
+                .set("description", request.getDescription())
+                .set("address", request.getAddress())
+                .set("contact_phone", request.getContactPhone())
+                .set("updated_at", LocalDateTime.now()));
+        if (rows != 1) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+
+        recordLog(order.getId(), current, "UPDATE", OrderStatus.PENDING, OrderStatus.PENDING, "报修人修改工单");
+
+        notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
+                "报修工单已修改",
+                "报修人修改了工单 " + order.getOrderNo() + "：《" + request.getTitle() + "》。",
                 order.getId());
     }
 
@@ -464,6 +499,19 @@ public class OrderServiceImpl implements OrderService {
                     "您负责的工单 " + order.getOrderNo() + " 已被管理员取消。",
                     order.getId());
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteByAdmin(Long id) {
+        RepairOrder order = lockOrder(id);
+        // 仅「待受理」或「已取消」可删除；已派单、维修中、已完成等流转中状态一律拒绝
+        if (!OrderStatus.PENDING.equals(order.getStatus())
+                && !OrderStatus.CANCELLED.equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "流转中的工单无法删除，请先取消或驳回");
+        }
+        // 逻辑删除：RepairOrder 上的 @TableLogic 注解会让 deleteById 执行 UPDATE deleted=1，不物理删除
+        repairOrderMapper.deleteById(id);
     }
 
     // ==================== 内部工具方法 ====================

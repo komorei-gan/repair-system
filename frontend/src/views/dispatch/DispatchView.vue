@@ -2,11 +2,12 @@
 /**
  * 派单中心 —— 只处理「待受理（PENDING）」工单的集中派单。
  * 复用 OrderListView 的表格与分页逻辑，去掉搜索框与状态 Tabs：
- * 查询时固定传 status: 'PENDING'，操作列保留「详情」与「派单」。
+ * 查询时固定传 status: 'PENDING'，操作列保留「详情」「派单」与「删除」。
  * 详情跳转带 from 来源，返回时回到本页。
  */
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as orderApi from '@/api/order'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
 import type { OrderStatus, OrderVO } from '@/types/api'
@@ -82,6 +83,27 @@ function onAssignSuccess(): void {
   void loadOrders()
 }
 
+/* ---------- 删除 ---------- */
+async function onDelete(row: OrderVO): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除该工单吗？删除后不可恢复',
+      '删除确认',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  try {
+    await orderApi.deleteOrder(row.id)
+    ElMessage.success('工单已删除')
+    await loadOrders()
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+  }
+}
+
 /* ---------- 详情跳转：带 from 来源，返回时回到派单中心 ---------- */
 function goDetail(row: OrderVO): void {
   void router.push({
@@ -124,26 +146,43 @@ onMounted(() => {
         :data="orders"
         row-key="id"
         style="width: 100%"
-        :header-cell-style="{ background: '#f8fbff', color: '#5e7489', fontWeight: 600 }"
+        :header-cell-style="{ background: 'var(--th-bg)', color: 'var(--muted)', fontWeight: 600 }"
       >
-        <el-table-column prop="orderNo" label="工单号" min-width="170" />
-        <el-table-column prop="title" label="故障标题" min-width="240" show-overflow-tooltip />
-        <el-table-column label="分类" width="130">
+        <el-table-column prop="orderNo" label="工单号" min-width="170" align="center" />
+        <el-table-column
+          prop="title"
+          label="故障标题"
+          min-width="240"
+          show-overflow-tooltip
+          align="center"
+        />
+        <el-table-column label="分类" width="130" align="center">
           <template #default="{ row }">{{ row.categoryName || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="reporterName" label="报修人" width="110" />
-        <el-table-column label="状态" width="110">
+        <el-table-column prop="reporterName" label="报修人" width="110" align="center" />
+        <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <el-tag :style="statusTagStyle(row.status)" size="small" effect="plain">
               {{ orderStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="175" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="createdAt" label="创建时间" width="175" align="center" />
+        <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="goDetail(row as OrderVO)">详情</el-button>
             <el-button link type="primary" @click="openAssign(row as OrderVO)">派单</el-button>
+            <el-button
+              v-if="
+                (row as OrderVO).status === 'PENDING' ||
+                (row as OrderVO).status === 'CANCELLED'
+              "
+              link
+              type="danger"
+              @click="onDelete(row as OrderVO)"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
         <template #empty>
@@ -252,23 +291,23 @@ onMounted(() => {
   overflow: hidden;
 }
 .table-card :deep(.el-table) {
-  --el-table-border-color: #f0f6fc;
-  --el-table-row-hover-bg-color: #f8fbff;
+  --el-table-border-color: var(--table-border);
+  --el-table-row-hover-bg-color: var(--row-hover-bg);
   font-size: 12.5px;
 }
 .table-card :deep(.el-table th.el-table__cell) {
   border-bottom: 1px solid var(--line);
 }
 .table-card :deep(.el-table .cell) {
-  color: #3e5872;
+  color: var(--cell-text);
 }
 
 .pagination-bar {
   display: flex;
   justify-content: flex-end;
   padding: 16px 22px;
-  border-top: 1px solid #f2f7fc;
-  background: #fcfefe;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
 /* ===== 响应式 ===== */

@@ -7,6 +7,7 @@ import com.repair.dto.CreateOrderRequest;
 import com.repair.dto.OrderDetailVO;
 import com.repair.dto.OrderVO;
 import com.repair.dto.ReasonRequest;
+import com.repair.dto.UpdateOrderRequest;
 import com.repair.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,14 @@ public class OrderController {
     @GetMapping("/{id}")
     public Result<OrderDetailVO> detail(@PathVariable Long id) {
         return Result.success(orderService.detail(id));
+    }
+
+    /** 修改工单（仅 PENDING，状态不变）→ 记日志并通知管理员 */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('REPORTER')")
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody UpdateOrderRequest request) {
+        orderService.update(id, request);
+        return Result.success();
     }
 
     /** 取消工单（PENDING）→ 通知管理员 */

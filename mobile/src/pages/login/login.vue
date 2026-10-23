@@ -47,6 +47,10 @@ async function handleLogin() {
     loading.value = false
   }
 }
+
+function goRegister() {
+  uni.navigateTo({ url: '/pages/login/register' })
+}
 </script>
 
 <template>
@@ -82,6 +86,11 @@ async function handleLogin() {
       >
         登 录
       </wd-button>
+    </view>
+
+    <view class="login-footer">
+      <text class="login-footer__text">还没有账号？</text>
+      <text class="login-footer__link" @click="goRegister">去注册</text>
     </view>
 
     <!-- 反馈类组件需显式声明（Wot UI 规范） -->
@@ -123,5 +132,24 @@ async function handleLogin() {
 
 .login-btn {
   margin-top: 48rpx;
+}
+
+.login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 40rpx;
+}
+
+.login-footer__text {
+  font-size: 26rpx;
+  color: #8a94a6;
+}
+
+.login-footer__link {
+  font-size: 26rpx;
+  color: #1890ff;
+  font-weight: 500;
 }
 </style>

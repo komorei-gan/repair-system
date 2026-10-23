@@ -31,6 +31,14 @@
   --line: #e4ecf6;
   --line-strong: #d3e1f0;
 
+  /* 组件级表面色 token（用于表格表头/悬停、侧栏、顶栏等硬编码白底的统一适配） */
+  --side-bg: linear-gradient(180deg, #ffffff 0%, #fcfeff 58%, #f8fbff 100%);
+  --topbar-bg: rgba(255, 255, 255, 0.82);
+  --th-bg: #f8fbff;
+  --row-hover-bg: #f8fbff;
+  --cell-text: #3e5872;
+  --table-border: #f0f6fc;
+
   --r-xl: 18px;
   --r-lg: 16px;
   --r-md: 12px;
@@ -43,4 +51,33 @@
   --ring: 0 0 0 4px rgba(24, 144, 255, 0.14);
 
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* ============================================================
+   深色模式：html.dark 覆盖核心表面/文字/边框色。
+   主色、状态色保持不变；仅替换中性色系。
+   ============================================================ */
+html.dark {
+  --ink: #e5eaf3;
+  --ink-2: #c9d6e4;
+  --muted: #93a7bb;
+  --muted-2: #7a90a8;
+
+  --bg: #10151c;
+  --surface: #1a2129;
+  --surface-2: #141b23;
+  --line: #2a343f;
+  --line-strong: #36424f;
+
+  /* 组件级暗色：侧栏/顶栏/表格全部变深，避免白底刺眼 */
+  --side-bg: linear-gradient(180deg, #1d1e1f 0%, #1a1b1d 58%, #17181a 100%);
+  --topbar-bg: rgba(29, 30, 31, 0.82);
+  --th-bg: #23272e;
+  --row-hover-bg: #242a33;
+  --cell-text: #c9d6e4;
+  --table-border: #2a343f;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 18px 36px -30px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 24px 50px -22px rgba(0, 0, 0, 0.7);
 }

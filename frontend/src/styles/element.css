@@ -42,3 +42,88 @@
 .el-select__wrapper.is-focused {
   box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.14) !important;
 }
+
+/* ============================================================
+   深色模式：强制覆盖 Element Plus 的白底组件，消灭所有刺眼白块。
+   分页器 / 输入框 / 下拉框 / 表格 / 卡片 / 弹窗 / 下拉菜单
+   ============================================================ */
+html.dark {
+  /* 分页器 */
+  .el-pagination {
+    background-color: transparent !important;
+  }
+  .el-pagination button,
+  .el-pagination .el-pager li {
+    background-color: #1d1e1f !important;
+    color: #e5eaf3 !important;
+  }
+  .el-pagination .el-pager li.is-active {
+    background-color: var(--el-color-primary) !important;
+    color: #fff !important;
+  }
+
+  /* 输入框 / 下拉框 */
+  .el-input__wrapper,
+  .el-select__wrapper {
+    background-color: #1d1e1f !important;
+    box-shadow: 0 0 0 1px #4c4d4f inset !important;
+  }
+  .el-input__inner,
+  .el-textarea__inner {
+    color: #e5eaf3 !important;
+  }
+  .el-input__inner::placeholder,
+  .el-textarea__inner::placeholder {
+    color: #6b7a8d !important;
+  }
+
+  /* 表格 & 卡片 */
+  .el-table,
+  .el-table tr,
+  .el-table th.el-table__cell,
+  .el-table td.el-table__cell {
+    background-color: transparent !important;
+    color: #e5eaf3 !important;
+  }
+  .el-table {
+    --el-table-bg-color: transparent;
+    --el-table-tr-bg-color: transparent;
+    --el-table-header-bg-color: transparent;
+    --el-table-header-text-color: #e5eaf3;
+    --el-table-text-color: #e5eaf3;
+  }
+  .el-table th.el-table__cell {
+    background-color: var(--th-bg) !important;
+    color: #c9d6e4 !important;
+  }
+  .el-table .el-table__row:hover > td.el-table__cell {
+    background-color: #242a33 !important;
+  }
+  .el-card {
+    background-color: #1d1e1f !important;
+    border-color: #2a343f !important;
+    color: #e5eaf3 !important;
+  }
+
+  /* 弹窗 & 下拉菜单 & 提示 */
+  .el-dialog,
+  .el-drawer,
+  .el-message-box {
+    background-color: #1d1e1f !important;
+    border: 1px solid #2a343f;
+  }
+  .el-dropdown-menu,
+  .el-select-dropdown,
+  .el-popper.is-light {
+    background-color: #1d1e1f !important;
+    border-color: #2a343f !important;
+  }
+  .el-dropdown-menu__item,
+  .el-select-dropdown__item {
+    color: #e5eaf3 !important;
+  }
+  .el-dropdown-menu__item:hover,
+  .el-select-dropdown__item.is-hovering {
+    background-color: #242a33 !important;
+  }
+}

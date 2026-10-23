@@ -3,11 +3,13 @@ package com.repair.service.impl;
 import com.repair.common.enums.RoleEnum;
 import com.repair.common.exception.BusinessException;
 import com.repair.common.result.ErrorCode;
+import com.repair.dto.ChangePasswordRequest;
 import com.repair.dto.LoginRequest;
 import com.repair.dto.LoginResponse;
 import com.repair.dto.RegisterRequest;
 import com.repair.dto.UserInfoVO;
 import com.repair.entity.User;
+import com.repair.mapper.UserMapper;
 import com.repair.security.JwtUtil;
 import com.repair.security.LoginUser;
 import com.repair.security.SecurityUtil;
@@ -16,6 +18,7 @@ import com.repair.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
 
     private final JwtUtil jwtUtil;
+
+    private final UserMapper userMapper;
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -69,5 +74,26 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
         return UserInfoVO.from(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void changePassword(ChangePasswordRequest request) {
+        LoginUser loginUser = SecurityUtil.getCurrentUser();
+        User user = userService.getById(loginUser.getUserId());
+        if (user == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        // 校验原密码
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "原密码不正确");
+        }
+        // 新密码不能与原密码相同
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "新密码不能与原密码相同");
+        }
+        userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", user.getId())
+                .set("password", passwordEncoder.encode(request.getNewPassword())));
     }
 }

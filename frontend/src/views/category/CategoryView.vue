@@ -142,21 +142,14 @@ onMounted(() => {
         :data="categories"
         row-key="id"
         style="width: 100%"
-        :header-cell-style="{ background: '#f8fbff', color: '#5e7489', fontWeight: 600 }"
+        :header-cell-style="{ background: 'var(--th-bg)', color: 'var(--muted)', fontWeight: 600 }"
       >
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="name" label="分类名称" min-width="160" />
-        <el-table-column label="状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small" effect="plain">
-              {{ row.status === 1 ? '启用' : '停用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" width="175">
+        <el-table-column prop="id" label="ID" width="70" align="center" />
+        <el-table-column prop="name" label="分类名称" min-width="160" align="center" />
+        <el-table-column label="创建时间" width="175" align="center">
           <template #default="{ row }">{{ row.createdAt || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row as Category)">编辑</el-button>
             <el-button link type="danger" @click="onDelete(row as Category)">删除</el-button>
@@ -232,14 +225,14 @@ onMounted(() => {
   overflow: hidden;
 }
 .table-card :deep(.el-table) {
-  --el-table-border-color: #f0f6fc;
-  --el-table-row-hover-bg-color: #f8fbff;
+  --el-table-border-color: var(--table-border);
+  --el-table-row-hover-bg-color: var(--row-hover-bg);
   font-size: 12.5px;
 }
 .table-card :deep(.el-table th.el-table__cell) {
   border-bottom: 1px solid var(--line);
 }
 .table-card :deep(.el-table .cell) {
-  color: #3e5872;
+  color: var(--cell-text);
 }
 </style>

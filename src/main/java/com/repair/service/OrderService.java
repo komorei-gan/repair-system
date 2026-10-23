@@ -12,6 +12,7 @@ import com.repair.dto.OrderVO;
 import com.repair.dto.ReassignRequest;
 import com.repair.dto.ReasonRequest;
 import com.repair.dto.RepairerStatsVO;
+import com.repair.dto.UpdateOrderRequest;
 
 /**
  * 工单核心业务（design.md §1 完整状态机，§1.3 全部 11 种操作）。
@@ -31,6 +32,9 @@ public interface OrderService {
 
     /** 报修人取消：PENDING → CANCELLED，通知管理员 */
     void cancelByReporter(Long id, ReasonRequest request);
+
+    /** 报修人修改工单：仅 PENDING 可改，状态不变，记日志并通知管理员 */
+    void update(Long id, UpdateOrderRequest request);
 
     /** 报修人确认并评价：COMPLETED → CONFIRMED，通知师傅 */
     void confirm(Long id, ConfirmRequest request);
@@ -70,4 +74,7 @@ public interface OrderService {
 
     /** 管理员取消：PENDING/ASSIGNED → CANCELLED，通知报修人（有师傅则一并） */
     void cancelByAdmin(Long id, ReasonRequest request);
+
+    /** 管理员删除：仅 PENDING/CANCELLED 可逻辑删除，其余状态拒绝 */
+    void deleteByAdmin(Long id);
 }

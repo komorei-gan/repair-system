@@ -175,34 +175,34 @@ onMounted(() => {
         :data="users"
         row-key="id"
         style="width: 100%"
-        :header-cell-style="{ background: '#f8fbff', color: '#5e7489', fontWeight: 600 }"
+        :header-cell-style="{ background: 'var(--th-bg)', color: 'var(--muted)', fontWeight: 600 }"
       >
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="username" label="用户名" min-width="120" />
-        <el-table-column label="真实姓名" min-width="110">
+        <el-table-column prop="id" label="ID" width="70" align="center" />
+        <el-table-column prop="username" label="用户名" min-width="120" align="center" />
+        <el-table-column label="真实姓名" min-width="110" align="center">
           <template #default="{ row }">{{ row.realName || '-' }}</template>
         </el-table-column>
-        <el-table-column label="角色" width="110">
+        <el-table-column label="角色" width="110" align="center">
           <template #default="{ row }">
             <el-tag :type="roleTagType(row.role)" size="small" effect="plain">
               {{ roleLabel(row.role) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="手机号" min-width="130">
+        <el-table-column label="手机号" min-width="130" align="center">
           <template #default="{ row }">{{ row.phone || '-' }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="90">
+        <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small" effect="plain">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" width="175">
+        <el-table-column label="创建时间" width="175" align="center">
           <template #default="{ row }">{{ row.createdAt || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="110" fixed="right">
+        <el-table-column label="操作" width="110" fixed="right" align="center">
           <template #default="{ row }">
             <el-button
               link
@@ -296,23 +296,23 @@ onMounted(() => {
   overflow: hidden;
 }
 .table-card :deep(.el-table) {
-  --el-table-border-color: #f0f6fc;
-  --el-table-row-hover-bg-color: #f8fbff;
+  --el-table-border-color: var(--table-border);
+  --el-table-row-hover-bg-color: var(--row-hover-bg);
   font-size: 12.5px;
 }
 .table-card :deep(.el-table th.el-table__cell) {
   border-bottom: 1px solid var(--line);
 }
 .table-card :deep(.el-table .cell) {
-  color: #3e5872;
+  color: var(--cell-text);
 }
 
 .pagination-bar {
   display: flex;
   justify-content: flex-end;
   padding: 16px 22px;
-  border-top: 1px solid #f2f7fc;
-  background: #fcfefe;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
 /* ===== 响应式 ===== */

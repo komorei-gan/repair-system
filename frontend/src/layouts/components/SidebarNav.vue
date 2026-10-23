@@ -36,7 +36,6 @@ const groups: NavGroup[] = [
     items: [
       { name: 'orders', icon: 'i-clipboard', pending: true },
       { name: 'dispatch', icon: 'i-send' },
-      { name: 'repair-progress', icon: 'i-wrench' },
     ],
   },
   {
@@ -115,7 +114,12 @@ function onNavigate(name: string): void {
             {{ appStore.pendingCount > 99 ? '99+' : appStore.pendingCount }}
           </span>
           <span v-else-if="item.badge" class="nav-badge">{{ item.badge }}</span>
-          <span v-else-if="item.dot" class="nav-dot" aria-hidden="true"></span>
+          <!-- 通知中心未读提示点：仅在存在未读消息时显示，全部已读后由 Pinia 状态驱动实时隐藏 -->
+          <span
+            v-else-if="item.dot && appStore.unreadCount > 0"
+            class="nav-dot"
+            aria-hidden="true"
+          ></span>
         </button>
       </template>
     </nav>
@@ -144,7 +148,7 @@ function onNavigate(name: string): void {
   width: 240px;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #ffffff 0%, #fcfeff 58%, #f8fbff 100%);
+  background: var(--side-bg);
   border-right: 1px solid var(--line);
   transition: transform 0.3s var(--ease), width 0.3s var(--ease);
 }
@@ -196,6 +200,7 @@ function onNavigate(name: string): void {
   font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 0.01em;
+  color: var(--ink);
 }
 .brand-text span {
   font-size: 9px;
@@ -215,6 +220,9 @@ function onNavigate(name: string): void {
   scrollbar-width: thin;
   scrollbar-color: #dce7f3 transparent;
 }
+html.dark .nav {
+  scrollbar-color: #2a343f transparent;
+}
 .nav::-webkit-scrollbar {
   width: 5px;
 }
@@ -228,6 +236,9 @@ function onNavigate(name: string): void {
   letter-spacing: 0.12em;
   color: #6b8095;
   padding: 16px 12px 7px;
+}
+html.dark .nav-label {
+  color: #7a90a8;
 }
 .nav-item {
   position: relative;
@@ -247,6 +258,9 @@ function onNavigate(name: string): void {
   cursor: pointer;
   transition: background 0.18s, color 0.18s, box-shadow 0.18s;
 }
+html.dark .nav-item {
+  color: #9aadc1;
+}
 .nav-item :deep(.ico) {
   color: #7a90a8;
   transition: color 0.18s;
@@ -254,6 +268,10 @@ function onNavigate(name: string): void {
 .nav-item:hover {
   background: #f2f8ff;
   color: var(--blue-700);
+}
+html.dark .nav-item:hover {
+  background: #23272e;
+  color: #63b5ff;
 }
 .nav-item:hover :deep(.ico) {
   color: var(--blue-500);
@@ -263,6 +281,11 @@ function onNavigate(name: string): void {
   font-weight: 600;
   background: linear-gradient(90deg, #e9f4ff 0%, #f6faff 100%);
   box-shadow: inset 0 0 0 1px #d8eaff;
+}
+html.dark .nav-item.active {
+  color: #63b5ff;
+  background: rgba(24, 144, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(24, 144, 255, 0.3);
 }
 .nav-item.active :deep(.ico) {
   color: var(--blue-500);
@@ -319,6 +342,10 @@ function onNavigate(name: string): void {
   border-radius: 12px;
   background: linear-gradient(160deg, #f7fbff 0%, #f1f8ff 100%);
 }
+html.dark .sys-card {
+  border-color: #2a343f;
+  background: #1f242b;
+}
 .sys-row {
   display: flex;
   align-items: center;
@@ -326,6 +353,9 @@ function onNavigate(name: string): void {
   font-size: 11.5px;
   font-weight: 600;
   color: #3e6284;
+}
+html.dark .sys-row {
+  color: #93a7bb;
 }
 .sys-ping {
   margin-left: auto;
@@ -359,12 +389,18 @@ function onNavigate(name: string): void {
   color: #7c93a9;
   margin-top: 6px;
 }
+html.dark .sys-card p {
+  color: #7a90a8;
+}
 .sys-bar {
   height: 3px;
   border-radius: 99px;
   background: #e3eef9;
   margin-top: 9px;
   overflow: hidden;
+}
+html.dark .sys-bar {
+  background: #2a343f;
 }
 .sys-bar span {
   display: block;
@@ -379,6 +415,9 @@ function onNavigate(name: string): void {
   font-size: 10px;
   color: #6b8095;
   padding: 10px 4px 0;
+}
+html.dark .side-version {
+  color: #7a90a8;
 }
 .side-version span {
   font-variant-numeric: tabular-nums;

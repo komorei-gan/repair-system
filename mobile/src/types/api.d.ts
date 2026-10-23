@@ -34,6 +34,14 @@ export interface LoginResponse {
   user: UserInfo
 }
 
+/** 注册请求（对应后端 RegisterRequest，四项必填） */
+export interface RegisterPayload {
+  username: string
+  password: string
+  realName: string
+  phone: string
+}
+
 /** 工单列表视图（列表页不含 description/images 大字段） */
 export interface OrderVO {
   id: number
@@ -82,6 +90,15 @@ export interface CreateOrderPayload {
   title: string
   description?: string
   images?: string
+  address?: string
+  contactPhone?: string
+}
+
+/** 修改报修请求（对应后端 UpdateOrderRequest，不含 images） */
+export interface UpdateOrderPayload {
+  categoryId: number
+  title: string
+  description?: string
   address?: string
   contactPhone?: string
 }

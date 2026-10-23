@@ -144,7 +144,7 @@ defineExpose({ load })
   right: -2px;
   z-index: 80;
   width: 364px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow-pop);
@@ -157,7 +157,7 @@ defineExpose({ load })
   right: 19px;
   width: 10px;
   height: 10px;
-  background: #fff;
+  background: var(--surface);
   border-left: 1px solid var(--line);
   border-top: 1px solid var(--line);
   transform: rotate(45deg);
@@ -244,8 +244,14 @@ defineExpose({ load })
 .notif-item.unread {
   background: linear-gradient(90deg, #f6faff 0%, #ffffff 72%);
 }
+html.dark .notif-item.unread {
+  background: linear-gradient(90deg, rgba(24, 144, 255, 0.12) 0%, var(--surface) 72%);
+}
 .notif-item.unread:hover {
   background: #f5faff;
+}
+html.dark .notif-item.unread:hover {
+  background: #242a33;
 }
 .notif-ico {
   width: 32px;

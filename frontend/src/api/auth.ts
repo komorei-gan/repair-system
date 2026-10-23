@@ -13,3 +13,8 @@ export function login(username: string, password: string): Promise<LoginResponse
 export function me(): Promise<UserInfo> {
   return http.get<UserInfo>('/api/auth/me')
 }
+
+/** 修改密码（校验原密码，成功后需重新登录） */
+export function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  return http.put<void>('/api/auth/password', { oldPassword, newPassword })
+}

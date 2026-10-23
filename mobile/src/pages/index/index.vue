@@ -5,12 +5,19 @@
  * - 状态筛选 tabs
  * - 工单卡片列表：分页（触底加载）、下拉刷新、空态、加载失败重试
  */
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
-import { myOrders } from '@/api/order'
-import { getToken } from '@/utils/token'
+import { useToast } from '@wot-ui/ui'
+import { myOrders, cancelOrder, confirmOrder } from '@/api/order'
+import { clearToken, getCachedUser, getToken } from '@/utils/token'
 import { STATUS_FILTERS, orderStatusLabel, orderStatusCls } from '@/utils/status'
-import type { OrderVO, OrderStatus } from '@/types/api'
+import type { OrderVO, OrderStatus, UserInfo } from '@/types/api'
+
+const toast = useToast()
+
+/** 本地缓存的登录用户（用于导航栏标题展示） */
+const user = ref<UserInfo | null>(getCachedUser<UserInfo>())
+const displayName = computed(() => user.value?.realName || user.value?.username || '')
 
 const PAGE_SIZE = 10
 
@@ -22,6 +29,19 @@ const loading = ref(false)
 const initialLoading = ref(true)
 const loadState = ref<'loading' | 'error' | 'finished'>('loading')
 const loadError = ref(false)
+
+// 撤回弹窗
+const cancelVisible = ref(false)
+const cancelReason = ref('')
+const cancelTargetId = ref<number | null>(null)
+const cancelSubmitting = ref(false)
+
+// 评价弹窗
+const rateVisible = ref(false)
+const rating = ref(0)
+const ratingComment = ref('')
+const rateTargetId = ref<number | null>(null)
+const rateSubmitting = ref(false)
 
 const hasMore = () => orders.value.length < total.value
 
@@ -78,6 +98,83 @@ function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/order/detail?id=${id}` })
 }
 
+function goEdit(id: number) {
+  uni.navigateTo({ url: `/pages/order/edit?id=${id}` })
+}
+
+/** 退出登录：二次确认后清除凭证并回到登录页 */
+function handleLogout() {
+  uni.showModal({
+    title: '提示',
+    content: '确定要退出登录吗？',
+    confirmColor: '#f5222d',
+    success: (res) => {
+      if (!res.confirm) return
+      // 清除本地凭证（等价于 removeStorageSync('repair_token' / 'repair_user')）
+      clearToken()
+      uni.reLaunch({ url: '/pages/login/login' })
+    },
+  })
+}
+
+/** 打开撤回弹窗 */
+function openCancel(order: OrderVO) {
+  cancelTargetId.value = order.id
+  cancelReason.value = ''
+  cancelVisible.value = true
+}
+
+/** 确认撤回：二次确认后调用 cancel 接口 */
+async function submitCancel() {
+  if (cancelTargetId.value === null) return
+  if (!cancelReason.value.trim()) {
+    toast.error('请输入撤回原因')
+    return
+  }
+  cancelSubmitting.value = true
+  try {
+    await cancelOrder(cancelTargetId.value, cancelReason.value.trim())
+    toast.success('已撤回')
+    cancelVisible.value = false
+    fetchOrders(true)
+  } catch {
+    // 错误提示已由 request 层统一 showToast 处理
+  } finally {
+    cancelSubmitting.value = false
+  }
+}
+
+/** 打开评价弹窗 */
+function openRate(order: OrderVO) {
+  rateTargetId.value = order.id
+  rating.value = 0
+  ratingComment.value = ''
+  rateVisible.value = true
+}
+
+/** 提交评价：星级 + 评价内容调用 confirm 接口 */
+async function submitRate() {
+  if (rateTargetId.value === null) return
+  if (rating.value < 1) {
+    toast.error('请评分')
+    return
+  }
+  rateSubmitting.value = true
+  try {
+    await confirmOrder(rateTargetId.value, {
+      rating: rating.value,
+      ratingComment: ratingComment.value || undefined,
+    })
+    toast.success('评价成功')
+    rateVisible.value = false
+    fetchOrders(true)
+  } catch {
+    // 错误提示已由 request 层统一 showToast 处理
+  } finally {
+    rateSubmitting.value = false
+  }
+}
+
 function formatTime(time: string): string {
   if (!time) return ''
   return time.replace('T', ' ').slice(0, 16)
@@ -107,12 +204,19 @@ onReachBottom(() => {
 <template>
   <view class="page">
     <wd-navbar
-      title="我的工单"
+      :title="displayName ? `${displayName}的报修` : '我的工单'"
       fixed
       placeholder
       safe-area-inset-top
       bordered
-    />
+    >
+      <template #right>
+        <view class="nav-logout" @click="handleLogout">
+          <wd-icon name="poweroff" size="16px" custom-class="nav-logout__icon" />
+          <text class="nav-logout__text">退出</text>
+        </view>
+      </template>
+    </wd-navbar>
 
     <!-- 状态筛选（胶囊分段控制器） -->
     <view class="filter-wrap">
@@ -171,6 +275,21 @@ onReachBottom(() => {
               <text class="order-card__time">{{ formatTime(order.createdAt) }}</text>
             </view>
           </view>
+
+          <!-- 状态操作区：PENDING 可修改/撤回，COMPLETED 可评价 -->
+          <view
+            v-if="order.status === 'PENDING' || order.status === 'COMPLETED'"
+            class="order-card__actions"
+            @click.stop
+          >
+            <template v-if="order.status === 'PENDING'">
+              <view class="order-card__action" @click="goEdit(order.id)">修改</view>
+              <view class="order-card__action order-card__action--danger" @click="openCancel(order)">撤回</view>
+            </template>
+            <template v-else-if="order.status === 'COMPLETED'">
+              <view class="order-card__action order-card__action--primary" @click="openRate(order)">评价</view>
+            </template>
+          </view>
         </view>
 
         <wd-loadmore :state="loadState" loading-text="加载中" finished-text="没有更多了" />
@@ -182,6 +301,75 @@ onReachBottom(() => {
       <wd-icon name="plus" size="24px" custom-class="fab-btn__icon" />
     </view>
 
+    <!-- 撤回弹窗 -->
+    <wd-popup
+      v-model="cancelVisible"
+      position="bottom"
+      round
+      safe-area-inset-bottom
+      custom-class="popup-panel"
+      @click-modal="cancelVisible = false"
+    >
+      <view class="popup-panel__title">撤回工单</view>
+      <view class="popup-panel__body">
+        <wd-textarea
+          v-model="cancelReason"
+          placeholder="请输入撤回原因"
+          :maxlength="200"
+          show-word-limit
+          auto-height
+        />
+      </view>
+      <view class="popup-panel__footer">
+        <wd-button block custom-class="popup-panel__cancel" @click="cancelVisible = false">取消</wd-button>
+        <wd-button
+          block
+          type="danger"
+          :loading="cancelSubmitting"
+          custom-class="popup-panel__confirm"
+          @click="submitCancel"
+        >
+          确认撤回
+        </wd-button>
+      </view>
+    </wd-popup>
+
+    <!-- 评价弹窗 -->
+    <wd-popup
+      v-model="rateVisible"
+      position="bottom"
+      round
+      safe-area-inset-bottom
+      custom-class="popup-panel"
+      @click-modal="rateVisible = false"
+    >
+      <view class="popup-panel__title">评价工单</view>
+      <view class="popup-panel__body">
+        <view class="rate-wrap">
+          <wd-rate v-model="rating" :num="5" size="32px" space="12px" />
+          <text class="rate-text">{{ rating > 0 ? `${rating} 分` : '请点击星星评分' }}</text>
+        </view>
+        <wd-textarea
+          v-model="ratingComment"
+          placeholder="说说这次维修体验（选填）"
+          :maxlength="200"
+          show-word-limit
+          auto-height
+        />
+      </view>
+      <view class="popup-panel__footer">
+        <wd-button
+          block
+          type="primary"
+          :loading="rateSubmitting"
+          custom-class="popup-panel__confirm popup-panel__confirm--full"
+          @click="submitRate"
+        >
+          提交评价
+        </wd-button>
+      </view>
+    </wd-popup>
+
     <wd-toast />
   </view>
 </template>
@@ -190,6 +378,24 @@ onReachBottom(() => {
 .page {
   min-height: 100vh;
   background: #f4f7f9;
+}
+
+/* 导航栏右侧「退出」按钮（淡灰，不喧宾夺主） */
+.nav-logout {
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+  color: #a8b0bd;
+}
+
+.nav-logout__icon {
+  margin-right: 2px;
+  color: #a8b0bd;
+}
+
+.nav-logout__text {
+  font-size: 13px;
+  color: #a8b0bd;
 }
 
 /* 右下角悬浮按钮（原生 view） */
@@ -365,6 +571,88 @@ onReachBottom(() => {
 .order-card__time {
   font-size: 12px;
   color: #909399;
+}
+
+/* 卡片底部操作区 */
+.order-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f2f2f2;
+}
+
+.order-card__action {
+  padding: 6px 18px;
+  font-size: 13px;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.order-card__action--primary {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #1890ff, #36cfc9);
+}
+
+.order-card__action--danger {
+  color: #f5222d;
+  border-color: #ffccc7;
+  background: #fff1f0;
+}
+
+/* 底部弹层面板 */
+.popup-panel {
+  padding: 20px 16px 16px;
+  background: #ffffff;
+}
+
+.popup-panel__title {
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2d3d;
+  text-align: center;
+}
+
+.popup-panel__body {
+  margin-bottom: 16px;
+}
+
+.rate-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rate-text {
+  font-size: 12px;
+  color: #909399;
+}
+
+.popup-panel__footer {
+  display: flex;
+  gap: 12px;
+}
+
+.popup-panel__footer .popup-panel__cancel {
+  flex: 1;
+  border-radius: 22px;
+}
+
+.popup-panel__footer .popup-panel__confirm {
+  flex: 1;
+  border-radius: 22px;
+}
+
+.popup-panel__footer .popup-panel__confirm--full {
+  flex: none;
+  width: 100%;
 }
 
 /* 状态浅色胶囊标签 */

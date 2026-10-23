@@ -65,6 +65,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public List<User> listAllByRole(String role) {
+        return userMapper.selectList(new LambdaQueryWrapper<User>()
+                .eq(User::getRole, role)
+                .orderByAsc(User::getId));
+    }
+
+    @Override
     public PageResult<UserInfoVO> pageUsers(Page<User> page, String keyword, String role) {
         // 关键字：姓名或账号模糊；角色：仅传合法角色时过滤
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()

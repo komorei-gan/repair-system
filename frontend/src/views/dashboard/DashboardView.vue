@@ -544,6 +544,9 @@ onMounted(() => {
                     </button>
                   </template>
                   <template v-else-if="row.status === 'PROCESSING'">
+                    <button type="button" class="act act-primary" @click="onAction(row, '改派')">
+                      改派
+                    </button>
                     <button type="button" class="act act-primary" @click="onAction(row, '跟进')">
                       跟进
                     </button>
@@ -676,15 +679,15 @@ onMounted(() => {
   box-shadow: 0 12px 22px -10px rgba(24, 144, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 .btn-ghost {
-  background: #fff;
+  background: var(--surface);
   border-color: var(--line-strong);
-  color: #3e5872;
+  color: var(--cell-text);
   box-shadow: var(--shadow-xs);
 }
 .btn-ghost:hover {
   border-color: var(--blue-200);
   color: var(--blue-700);
-  background: #f8fcff;
+  background: var(--surface-2);
 }
 .btn-icon {
   width: 38px;
@@ -722,7 +725,7 @@ onMounted(() => {
   color: var(--ink-2);
 }
 .seg button[aria-selected='true'] {
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(15, 42, 74, 0.14);
@@ -879,18 +882,26 @@ onMounted(() => {
   padding: 0 13px 0 34px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
-  background: #fafdff;
+  background: var(--surface-2);
   font-size: 12.5px;
   color: var(--ink);
   transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
 }
+html.dark .search-field input {
+  background: #1d1e1f;
+  border-color: #4c4d4f;
+  color: #e5eaf3;
+}
 .search-field input::placeholder {
   color: #9aadc1;
+}
+html.dark .search-field input::placeholder {
+  color: #6b7a8d;
 }
 .search-field input:focus {
   outline: none;
   border-color: var(--blue-500);
-  background: #fff;
+  background: var(--surface);
   box-shadow: var(--ring);
 }
 /* 故障分类下拉（替换原「故障分类」占位按钮，样式与工具栏其余控件对齐） */
@@ -917,10 +928,10 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: #fff;
+  background: var(--surface);
   font-size: 12.5px;
   font-weight: 500;
-  color: #4c647c;
+  color: var(--muted);
   cursor: pointer;
   white-space: nowrap;
   transition: border-color 0.18s, color 0.18s, background 0.18s;
@@ -1005,14 +1016,18 @@ table {
 }
 thead th {
   padding: 10px 14px;
-  text-align: left;
+  /* 表头统一居中，与各业务列表页（el-table align="center"）保持一致 */
+  text-align: center;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.07em;
   color: #8298ae;
-  background: #f8fbff;
+  background: var(--th-bg);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
+}
+html.dark thead th {
+  color: #7a90a8;
 }
 thead th:first-child {
   padding-left: 22px;
@@ -1020,27 +1035,27 @@ thead th:first-child {
 }
 thead th:last-child {
   padding-right: 22px;
-  text-align: right;
 }
 tbody td {
   padding: 14px;
-  border-bottom: 1px solid #f0f6fc;
+  border-bottom: 1px solid var(--table-border);
   vertical-align: middle;
+  /* 内容统一居中 */
+  text-align: center;
   font-size: 12.5px;
-  color: #3e5872;
+  color: var(--cell-text);
 }
 tbody td:first-child {
   padding-left: 22px;
 }
 tbody td:last-child {
   padding-right: 22px;
-  text-align: right;
 }
 tbody tr {
   transition: background 0.16s;
 }
 tbody tr:hover {
-  background: #f8fbff;
+  background: var(--row-hover-bg);
 }
 tbody tr:last-child td {
   border-bottom: 0;
@@ -1058,7 +1073,7 @@ tbody tr:last-child td {
   height: 16px;
   border: 1.5px solid #c9d9e8;
   border-radius: 5px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   position: relative;
@@ -1296,11 +1311,12 @@ tr:hover .order-title {
   color: #4e6880;
   font-size: 12px;
 }
+/* 时间与日期同行显示：原为 display:block 导致「日期在上、时间在下」竖排 */
 .time-cell small {
-  display: block;
+  display: inline;
   font-size: 10.5px;
   color: #6b8095;
-  margin-top: 1px;
+  margin-left: 4px;
 }
 
 .row-actions {
@@ -1344,8 +1360,8 @@ tr:hover .order-title {
   gap: 14px;
   flex-wrap: wrap;
   padding: 13px 22px;
-  border-top: 1px solid #f2f7fc;
-  background: #fcfefe;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
 }
 .foot-info {
   font-size: 11.5px;
@@ -1353,7 +1369,7 @@ tr:hover .order-title {
   font-variant-numeric: tabular-nums;
 }
 .foot-info b {
-  color: #415c76;
+  color: var(--ink-2);
   font-weight: 600;
 }
 .pager {

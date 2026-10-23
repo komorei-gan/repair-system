@@ -172,7 +172,7 @@ async function onLogout(): Promise<void> {
   align-items: center;
   gap: 16px;
   padding: 0 30px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--topbar-bg);
   backdrop-filter: blur(16px) saturate(1.25);
   -webkit-backdrop-filter: blur(16px) saturate(1.25);
   border-bottom: 1px solid var(--line);
@@ -194,10 +194,18 @@ async function onLogout(): Promise<void> {
   cursor: pointer;
   transition: background 0.18s, color 0.18s, border-color 0.18s;
 }
+html.dark .icon-btn {
+  color: #9aadc1;
+}
 .icon-btn:hover {
   background: #f2f7fd;
   border-color: #e6eff9;
   color: var(--blue-700);
+}
+html.dark .icon-btn:hover {
+  background: #23272e;
+  border-color: #36424f;
+  color: #63b5ff;
 }
 
 .crumb {
@@ -267,6 +275,10 @@ async function onLogout(): Promise<void> {
 .profile:hover {
   background: #f7fafe;
   border-color: #eaf2fa;
+}
+html.dark .profile:hover {
+  background: #23272e;
+  border-color: #36424f;
 }
 .avatar-lg {
   width: 34px;
