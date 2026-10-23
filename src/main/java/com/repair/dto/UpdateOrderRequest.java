@@ -8,8 +8,7 @@ import lombok.Data;
 
 /**
  * 报修人修改工单请求（仅 PENDING 状态可改，状态不变）。
- * 与 {@link CreateOrderRequest} 字段一致但不含 images：
- * 移动端本阶段不处理图片，修改不回写图片字段，避免误清空原有图片。
+ * 与 {@link CreateOrderRequest} 字段一致，包含 images：修改时一并回写图片。
  */
 @Data
 public class UpdateOrderRequest {
@@ -24,6 +23,10 @@ public class UpdateOrderRequest {
 
     @Size(max = 1000, message = "故障描述不能超过 1000 字")
     private String description;
+
+    /** 图片 URL 的 JSON 数组字符串（前端上传后传入，可为空表示清空图片） */
+    @Size(max = 1000, message = "图片信息过长")
+    private String images;
 
     @Size(max = 200, message = "报修地址不能超过 200 字")
     private String address;

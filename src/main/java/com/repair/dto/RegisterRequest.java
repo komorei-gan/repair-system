@@ -6,7 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 注册请求参数（仅报修人注册，role 由服务端固定为 REPORTER）。
+ * 注册请求参数（双角色：报修人 REPORTER / 维修师傅 REPAIRER）。
+ * role 由前端显式传入，服务端仅接受 REPORTER / REPAIRER，绝不允许 ADMIN。
  */
 @Data
 public class RegisterRequest {
@@ -27,4 +28,13 @@ public class RegisterRequest {
     @NotBlank(message = "手机号不能为空")
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
     private String phone;
+
+    /** 注册角色：仅允许 REPORTER 报修人 / REPAIRER 维修师傅 */
+    @NotBlank(message = "请选择注册角色")
+    @Pattern(regexp = "REPORTER|REPAIRER", message = "注册角色非法")
+    private String role;
+
+    /** 申请理由（仅师傅注册必填，报修人忽略） */
+    @Size(max = 500, message = "申请理由不能超过 500 字")
+    private String reason;
 }

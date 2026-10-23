@@ -42,3 +42,6 @@ mobile/.hbuilderx/
 
 ### 忽略 DSH / pnpm 缓存 ###
 .cache/
+
+### 上传图片存储目录（运行时生成，不纳入版本控制） ###
+uploads/

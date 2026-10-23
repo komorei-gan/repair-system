@@ -33,7 +33,7 @@ public class AuthController {
         return Result.success(authService.login(request));
     }
 
-    /** 报修人注册 */
+    /** 双角色注册（报修人直接通过；师傅进入待审核） */
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);

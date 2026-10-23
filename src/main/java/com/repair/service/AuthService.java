@@ -14,7 +14,7 @@ public interface AuthService {
     /** 登录：校验账号密码与状态，签发 JWT */
     LoginResponse login(LoginRequest request);
 
-    /** 报修人注册（role 固定 REPORTER） */
+    /** 双角色注册（报修人直接通过；师傅进入待审核） */
     void register(RegisterRequest request);
 
     /** 当前登录用户信息（不含密码） */

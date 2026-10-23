@@ -23,6 +23,8 @@ public enum ErrorCode {
     LOGIN_FAILED(401, "用户名或密码错误"),
     FORBIDDEN(403, "无权限访问"),
     ACCOUNT_DISABLED(403, "账号已被禁用"),
+    AUDIT_PENDING(403, "您的账号正在审核中，请耐心等待"),
+    AUDIT_REJECTED(403, "您的账号已被拒绝，如有疑问请联系管理员"),
     NOT_FOUND(404, "资源不存在"),
     METHOD_NOT_ALLOWED(405, "请求方法不支持"),
     SERVER_ERROR(500, "服务器内部错误");

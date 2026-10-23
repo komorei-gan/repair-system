@@ -15,6 +15,11 @@ export const useAppStore = defineStore('app', () => {
   const pendingCount = ref(0)
   /** 通知未读数，供顶栏铃铛角标展示 */
   const unreadCount = ref(0)
+  /**
+   * 工单详情刷新令牌：递增即通知当前详情页重新拉取数据。
+   * 用于「已在目标详情页时再次点击通知」的重复路由场景（router.push 会被判为重复导航而中止）。
+   */
+  const orderDetailRefreshToken = ref(0)
 
   function toggleSidebar(open?: boolean): void {
     sidebarOpen.value = open ?? !sidebarOpen.value
@@ -29,6 +34,11 @@ export const useAppStore = defineStore('app', () => {
     notifOpen.value = false
   }
 
+  /** 触发当前工单详情页刷新（重复点击同一工单通知时调用） */
+  function triggerOrderDetailRefresh(): void {
+    orderDetailRefreshToken.value += 1
+  }
+
   /**
    * 重置应用级 UI 状态（退出登录时调用）。
    * 注意：setup 风格的 store 不提供内置 $reset()，必须显式实现。
@@ -38,6 +48,7 @@ export const useAppStore = defineStore('app', () => {
     notifOpen.value = false
     pendingCount.value = 0
     unreadCount.value = 0
+    orderDetailRefreshToken.value = 0
   }
 
   /** 拉取待受理工单数（失败静默保留上次值） */
@@ -77,9 +88,11 @@ export const useAppStore = defineStore('app', () => {
     notifOpen,
     pendingCount,
     unreadCount,
+    orderDetailRefreshToken,
     toggleSidebar,
     toggleNotif,
     closeOverlays,
+    triggerOrderDetailRefresh,
     reset,
     refreshPendingCount,
     refreshUnreadCount,

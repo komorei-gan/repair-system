@@ -41,6 +41,10 @@ export default {
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </symbol>
+    <symbol id="i-audit" viewBox="0 0 24 24">
+      <path d="M12 2 4 5v6c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V5l-8-3z" />
+      <path d="m9 12 2 2 4-4" />
+    </symbol>
     <symbol id="i-user" viewBox="0 0 24 24">
       <circle cx="12" cy="8" r="4" />
       <path d="M5 21a7 7 0 0 1 14 0" />

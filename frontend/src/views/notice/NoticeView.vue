@@ -94,6 +94,8 @@ async function onReadOne(item: NotificationVO): Promise<void> {
     void router.push({
       path: `/orders/${item.orderId}`,
       query: { from: route.path },
+    }).catch(() => {
+      /* 忽略重复导航 / 导航被中止的 rejection */
     })
   }
 }

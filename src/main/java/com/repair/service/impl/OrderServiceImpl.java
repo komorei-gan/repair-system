@@ -97,7 +97,7 @@ public class OrderServiceImpl implements OrderService {
         List<Long> adminIds = listEnabledUserIds(RoleEnum.ADMIN);
         notifyService.notifyUsers(adminIds, NotificationType.ORDER,
                 "新报修工单待受理",
-                "单号 " + order.getOrderNo() + "：《" + order.getTitle() + "》已提交，请及时受理。",
+                "《" + order.getTitle() + "》已提交，单号：" + order.getOrderNo() + "，请及时受理。",
                 order.getId());
         return order.getId();
     }
@@ -158,7 +158,8 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
                 "工单已取消",
-                "报修人取消了工单 " + order.getOrderNo() + "，原因：" + request.getReason() + "。",
+                "《" + order.getTitle() + "》已被报修人取消（单号：" + order.getOrderNo() + "），原因："
+                        + request.getReason() + "。",
                 order.getId());
     }
 
@@ -181,6 +182,7 @@ public class OrderServiceImpl implements OrderService {
                 .set("category_id", category.getId())
                 .set("title", request.getTitle())
                 .set("description", request.getDescription())
+                .set("images", request.getImages())
                 .set("address", request.getAddress())
                 .set("contact_phone", request.getContactPhone())
                 .set("updated_at", LocalDateTime.now()));
@@ -192,7 +194,7 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
                 "报修工单已修改",
-                "报修人修改了工单 " + order.getOrderNo() + "：《" + request.getTitle() + "》。",
+                "《" + request.getTitle() + "》已被报修人修改（单号：" + order.getOrderNo() + "）。",
                 order.getId());
     }
 
@@ -227,7 +229,8 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
                 "获得新评价",
-                "您的维修单 " + order.getOrderNo() + " 获得 " + request.getRating() + " 分评价。",
+                "《" + order.getTitle() + "》获得 " + request.getRating() + " 分评价（单号："
+                        + order.getOrderNo() + "）。",
                 order.getId());
     }
 
@@ -267,7 +270,7 @@ public class OrderServiceImpl implements OrderService {
         recordLog(order.getId(), current, "REMIND", OrderStatus.PROCESSING, OrderStatus.PROCESSING, "报修人催单");
         notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
                 "报修人催单",
-                "报修人催办工单 " + order.getOrderNo() + "：《" + order.getTitle() + "》。",
+                "报修人催办《" + order.getTitle() + "》（单号：" + order.getOrderNo() + "）。",
                 order.getId());
     }
 
@@ -299,9 +302,9 @@ public class OrderServiceImpl implements OrderService {
         User repairer = userMapper.selectById(current.getUserId());
         notifyService.notify(order.getReporterId(), NotificationType.ORDER,
                 "维修师傅已接单",
-                "您的报修单 " + order.getOrderNo() + " 已由师傅 " + displayName(repairer)
+                "《" + order.getTitle() + "》已由师傅 " + displayName(repairer)
                         + (StringUtils.hasText(repairer.getPhone()) ? "（电话 " + repairer.getPhone() + "）" : "")
-                        + " 接单，开始维修。",
+                        + " 接单，开始维修（单号：" + order.getOrderNo() + "）。",
                 order.getId());
     }
 
@@ -322,7 +325,8 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
                 "师傅拒单",
-                "单号 " + order.getOrderNo() + " 被师傅拒单，原因：" + request.getReason() + "，请重新处理。",
+                "《" + order.getTitle() + "》被师傅拒单（单号：" + order.getOrderNo() + "），原因："
+                        + request.getReason() + "，请重新处理。",
                 order.getId());
     }
 
@@ -343,7 +347,7 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notify(order.getReporterId(), NotificationType.ORDER,
                 "维修已完成，待确认",
-                "您的报修单 " + order.getOrderNo() + " 已维修完成，请确认并评价。",
+                "《" + order.getTitle() + "》已维修完成（单号：" + order.getOrderNo() + "），请确认并评价。",
                 order.getId());
     }
 
@@ -417,7 +421,7 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notify(repairer.getId(), NotificationType.ORDER,
                 "新工单待接单",
-                "您被指派维修工单：单号 " + order.getOrderNo() + "，《" + order.getTitle() + "》"
+                "《" + order.getTitle() + "》已派单给您（单号：" + order.getOrderNo() + "）"
                         + (StringUtils.hasText(order.getAddress()) ? "，地址：" + order.getAddress() : "") + "。",
                 order.getId());
     }
@@ -450,11 +454,11 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notify(newRepairer.getId(), NotificationType.ORDER,
                 "新工单待接单",
-                "您被指派维修工单：单号 " + order.getOrderNo() + "，《" + order.getTitle() + "》。",
+                "《" + order.getTitle() + "》已派单给您（单号：" + order.getOrderNo() + "）。",
                 order.getId());
         notifyService.notify(oldRepairerId, NotificationType.ORDER,
                 "工单已改派",
-                "单号 " + order.getOrderNo() + " 已改派给其他师傅，无需继续处理。",
+                "《" + order.getTitle() + "》已改派给其他师傅（单号：" + order.getOrderNo() + "），无需继续处理。",
                 order.getId());
     }
 
@@ -472,7 +476,7 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notify(order.getReporterId(), NotificationType.ORDER,
                 "报修单被驳回",
-                "您的报修单 " + order.getOrderNo() + " 被驳回，原因：" + request.getReason() + "。",
+                "《" + order.getTitle() + "》被驳回（单号：" + order.getOrderNo() + "），原因：" + request.getReason() + "。",
                 order.getId());
     }
 
@@ -491,12 +495,13 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notify(order.getReporterId(), NotificationType.ORDER,
                 "工单已被取消",
-                "您的报修单 " + order.getOrderNo() + " 已被管理员取消，原因：" + request.getReason() + "。",
+                "《" + order.getTitle() + "》已被管理员取消（单号：" + order.getOrderNo() + "），原因："
+                        + request.getReason() + "。",
                 order.getId());
         if (order.getRepairerId() != null) {
             notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
                     "工单已被取消",
-                    "您负责的工单 " + order.getOrderNo() + " 已被管理员取消。",
+                    "您负责的《" + order.getTitle() + "》已被管理员取消（单号：" + order.getOrderNo() + "）。",
                     order.getId());
         }
     }

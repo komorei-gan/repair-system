@@ -2,6 +2,7 @@ package com.repair.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.repair.common.enums.AuditStatus;
 import com.repair.common.enums.RoleEnum;
 import com.repair.common.exception.BusinessException;
 import com.repair.common.result.ErrorCode;
@@ -58,16 +59,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> listEnabledByRole(String role) {
+        // 查询维修师傅时，仅返回审核通过的正式师傅（待审核/已拒绝不可派单）
+        boolean repairerScope = RoleEnum.REPAIRER.equals(role);
         return userMapper.selectList(new LambdaQueryWrapper<User>()
                 .eq(User::getRole, role)
                 .eq(User::getStatus, 1)
+                .eq(repairerScope, User::getAuditStatus, AuditStatus.APPROVED)
                 .orderByAsc(User::getId));
     }
 
     @Override
     public List<User> listAllByRole(String role) {
+        // 师傅业绩榜仅统计审核通过的正式师傅，避免待审核/已拒绝账号上榜
+        boolean repairerScope = RoleEnum.REPAIRER.equals(role);
         return userMapper.selectList(new LambdaQueryWrapper<User>()
                 .eq(User::getRole, role)
+                .eq(repairerScope, User::getAuditStatus, AuditStatus.APPROVED)
                 .orderByAsc(User::getId));
     }
 

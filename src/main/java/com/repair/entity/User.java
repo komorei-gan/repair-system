@@ -40,8 +40,14 @@ public class User implements Serializable {
     /** 1 启用 / 0 禁用 */
     private Integer status;
 
+    /** 审核状态：0 待审核 / 1 已通过 / 2 已拒绝（报修人、管理员默认 1） */
+    private Integer auditStatus;
+
     /** 师傅维修类别，逻辑关联 category.id（仅 REPAIRER 使用） */
     private Long skillCategoryId;
+
+    /** 申请理由（仅师傅注册时填写） */
+    private String reason;
 
     /** 师傅平均评分（仅 REPAIRER 使用） */
     private BigDecimal rating;

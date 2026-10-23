@@ -32,6 +32,21 @@ export interface UserInfo {
   createdAt?: string
 }
 
+/** 审核状态：0 待审核 / 1 已通过 / 2 已拒绝 */
+export type AuditStatus = 0 | 1 | 2
+
+/** 师傅审核列表视图 */
+export interface RepairerAuditVO {
+  id: number
+  username: string
+  realName: string | null
+  phone: string | null
+  /** 申请理由（师傅注册时填写） */
+  reason: string | null
+  auditStatus: AuditStatus
+  createdAt: string | null
+}
+
 /** 登录响应：token + 用户信息 */
 export interface LoginResponse {
   token: string

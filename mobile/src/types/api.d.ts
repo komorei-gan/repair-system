@@ -34,12 +34,16 @@ export interface LoginResponse {
   user: UserInfo
 }
 
-/** 注册请求（对应后端 RegisterRequest，四项必填） */
+/** 注册请求（对应后端 RegisterRequest：双角色） */
 export interface RegisterPayload {
   username: string
   password: string
   realName: string
   phone: string
+  /** 注册角色：REPORTER 报修人 / REPAIRER 维修师傅 */
+  role: 'REPORTER' | 'REPAIRER'
+  /** 申请理由（仅师傅注册时填写） */
+  reason?: string
 }
 
 /** 工单列表视图（列表页不含 description/images 大字段） */
@@ -94,11 +98,12 @@ export interface CreateOrderPayload {
   contactPhone?: string
 }
 
-/** 修改报修请求（对应后端 UpdateOrderRequest，不含 images） */
+/** 修改报修请求（对应后端 UpdateOrderRequest，含 images） */
 export interface UpdateOrderPayload {
   categoryId: number
   title: string
   description?: string
+  images?: string
   address?: string
   contactPhone?: string
 }

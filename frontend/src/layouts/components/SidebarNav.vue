@@ -42,6 +42,7 @@ const groups: NavGroup[] = [
     label: '资源管理',
     items: [
       { name: 'repairers', icon: 'i-users' },
+      { name: 'repairer-audit', icon: 'i-audit' },
       { name: 'users', icon: 'i-user' },
       { name: 'categories', icon: 'i-tags' },
     ],

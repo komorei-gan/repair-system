@@ -1,5 +1,6 @@
 package com.repair.service;
 
+import com.repair.common.enums.AuditStatus;
 import com.repair.common.enums.RoleEnum;
 import com.repair.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +68,7 @@ public class DevReporterAccountResetter implements CommandLineRunner {
             reporter.setRealName("张三");
             reporter.setRole(RoleEnum.REPORTER);
             reporter.setStatus(1);
+            reporter.setAuditStatus(AuditStatus.APPROVED);
             reporter.setFinishCount(0);
             userService.save(reporter);
             log.warn("[dev] 已创建联调报修人账号 {} / {}（仅本地开发环境）",

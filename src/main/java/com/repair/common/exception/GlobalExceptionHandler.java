@@ -13,6 +13,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -59,6 +60,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleDuplicateKey(DuplicateKeyException e) {
         log.warn("唯一键冲突: {}", e.getMessage());
         return build(ErrorCode.USERNAME_EXISTS);
+    }
+
+    /** 上传文件超出大小限制（multipart 框架抛出的异常统一转 400） */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Result<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        return build(ErrorCode.PARAM_ERROR.getCode(), "图片大小不能超过 5MB");
     }
 
     /** 方法级权限不足（@PreAuthorize 抛出） */

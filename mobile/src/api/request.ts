@@ -118,4 +118,61 @@ export const http = {
   },
 }
 
+/**
+ * 图片上传（multipart/form-data）。
+ * 上传成功后返回后端生成的完整图片 URL（已解包 Result<string>）。
+ * 401 时清 token 回登录页；其余错误 showToast 提示。
+ */
+export function uploadFile(filePath: string): Promise<string> {
+  const token = getToken()
+
+  return new Promise<string>((resolve, reject) => {
+    uni.uploadFile({
+      url: `${BASE_URL}/api/files/upload`,
+      filePath,
+      name: 'file',
+      header: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      timeout: 20_000,
+      success: (res) => {
+        // 网络层失败：后端未启动 / 跨域不可达
+        if (isNetworkError(res.statusCode)) {
+          uni.showToast({ title: '网络连接失败，请确认后端服务已启动', icon: 'none' })
+          reject(new Error('network error'))
+          return
+        }
+
+        let result: Result | null = null
+        try {
+          result = JSON.parse(res.data) as Result
+        } catch {
+          uni.showToast({ title: '上传失败，请重试', icon: 'none' })
+          reject(new Error('invalid response'))
+          return
+        }
+
+        if (result && typeof result === 'object' && result.code === 200) {
+          resolve(result.data as string)
+          return
+        }
+
+        if (result && result.code === 401) {
+          clearToken()
+          redirectToLogin()
+          reject(new Error(result.msg || '未登录'))
+          return
+        }
+
+        uni.showToast({ title: result?.msg || '上传失败', icon: 'none' })
+        reject(new Error(result?.msg || '上传失败'))
+      },
+      fail: () => {
+        uni.showToast({ title: '网络连接失败，请确认后端服务已启动', icon: 'none' })
+        reject(new Error('network error'))
+      },
+    })
+  })
+}
+
 export default request

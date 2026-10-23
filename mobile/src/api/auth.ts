@@ -9,7 +9,7 @@ export function login(username: string, password: string): Promise<LoginResponse
   return http.post<LoginResponse>('/api/auth/login', { username, password })
 }
 
-/** 报修人注册（role 固定 REPORTER） */
+/** 双角色注册（报修人直接通过；师傅进入待审核） */
 export function register(payload: RegisterPayload): Promise<void> {
   return http.post<void>('/api/auth/register', payload)
 }

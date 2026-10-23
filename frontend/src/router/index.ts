@@ -48,6 +48,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '维修师傅', icon: 'i-users' },
       },
       {
+        path: 'repairer-audit',
+        name: 'repairer-audit',
+        component: () => import('@/views/repairerAudit/RepairerAuditView.vue'),
+        meta: { title: '师傅审核', icon: 'i-audit' },
+      },
+      {
         path: 'users',
         name: 'users',
         component: () => import('@/views/user/UserView.vue'),

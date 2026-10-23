@@ -4,13 +4,14 @@
  * 数据接真实接口：GET /api/notifications + 全部已读（后端未启动时静默降级为空态）。
  */
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as notifApi from '@/api/notification'
 import { useAppStore } from '@/stores/app'
 import { NOTIFICATION_TYPE_META } from '@/utils/status'
 import type { NotificationVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
+const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
 
@@ -53,7 +54,12 @@ async function onMarkAll(): Promise<void> {
  * 点击单条通知：
  * 1) 调用 PUT /api/notifications/{id}/read 标记该条已读（幂等，失败静默不阻断跳转）；
  * 2) 关闭通知面板；
- * 3) 工单通知（有 orderId）跳转工单详情页。
+ * 3) 按通知类型分流跳转：
+ *    - 系统通知且内容为「师傅注册申请」→ 师傅审核页（默认待审核 Tab）；
+ *    - 工单通知（有 orderId）→ 工单详情页：
+ *      当前已在该工单详情页时，router.push 会被判为重复导航并中止，
+ *      改为触发全局刷新令牌，由 OrderDetailView 监听后重新拉取数据；
+ *    - 其余情况不跳转。
  */
 async function onReadOne(item: NotificationVO): Promise<void> {
   if (item.isRead === 0) {
@@ -67,9 +73,29 @@ async function onReadOne(item: NotificationVO): Promise<void> {
     }
   }
   appStore.toggleNotif(false)
-  if (item.orderId !== null) {
-    void router.push(`/orders/${item.orderId}`)
+
+  // 系统通知：师傅注册申请 → 师傅审核页，并默认定位到「待审核」Tab
+  if (item.orderId === null || item.type === 'SYSTEM') {
+    const text = `${item.title ?? ''}${item.content ?? ''}`
+    if (text.includes('师傅注册')) {
+      void router
+        .push({ path: '/repairer-audit', query: { tab: '0' } })
+        .catch(() => {
+          /* 忽略重复导航 / 导航被中止的 rejection */
+        })
+    }
+    return
   }
+
+  const target = `/orders/${item.orderId}`
+  // 已在目标详情页：不重复跳转，改为通知详情页刷新
+  if (route.path === target) {
+    appStore.triggerOrderDetailRefresh()
+    return
+  }
+  void router.push(target).catch(() => {
+    /* 忽略重复导航 / 导航被中止的 rejection */
+  })
 }
 
 const emit = defineEmits<{ 'read-all': []; 'view-all': [] }>()

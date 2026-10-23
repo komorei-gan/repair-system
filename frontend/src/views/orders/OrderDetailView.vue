@@ -3,16 +3,18 @@
  * 工单详情 —— 展示工单完整信息与操作日志（design.md §3.2 GET /api/orders/{id}）。
  * 管理员从工单列表「详情」按钮进入。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as orderApi from '@/api/order'
+import { useAppStore } from '@/stores/app'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
 import type { OrderDetailVO, OrderStatus } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
 const route = useRoute()
 const router = useRouter()
+const appStore = useAppStore()
 
 const loading = ref(false)
 const detail = ref<OrderDetailVO | null>(null)
@@ -20,6 +22,18 @@ const detail = ref<OrderDetailVO | null>(null)
 const errorText = ref('')
 
 const orderId = computed(() => Number(route.params.id))
+
+/** 解析后端 images JSON 字符串为 URL 数组（解析失败返回空数组） */
+const imageList = computed<string[]>(() => {
+  const raw = detail.value?.images
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string') : []
+  } catch {
+    return []
+  }
+})
 
 async function load(): Promise<void> {
   errorText.value = ''
@@ -81,6 +95,22 @@ function actionLabel(action: string): string {
 }
 
 onMounted(load)
+
+// 路由参数变化（/orders/100 → /orders/200）时组件会被复用，需重新加载
+watch(
+  () => route.params.id,
+  () => {
+    void load()
+  },
+)
+
+// 已在当前详情页时点击通知：由全局刷新令牌触发重新拉取（状态与操作日志同步刷新）
+watch(
+  () => appStore.orderDetailRefreshToken,
+  () => {
+    void load()
+  },
+)
 </script>
 
 <template>
@@ -116,6 +146,22 @@ onMounted(load)
           <div v-if="detail.description" class="info-desc">
             <span>故障描述</span>
             <p>{{ detail.description }}</p>
+          </div>
+          <div class="info-desc">
+            <span>故障图片</span>
+            <div v-if="imageList.length > 0" class="image-list">
+              <el-image
+                v-for="(img, idx) in imageList"
+                :key="img"
+                class="thumb"
+                :src="img"
+                :preview-src-list="imageList"
+                :initial-index="idx"
+                fit="cover"
+                preview-teleported
+              />
+            </div>
+            <p v-else class="no-image">无</p>
           </div>
           <div v-if="detail.repairResult" class="info-desc">
             <span>维修结果</span>
@@ -259,6 +305,24 @@ onMounted(load)
   color: #3e5872;
   line-height: 1.7;
   white-space: pre-wrap;
+}
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.image-list .thumb {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.image-list .thumb :deep(.el-image__inner) {
+  border-radius: 8px;
+}
+.no-image {
+  color: #a8b0bd;
 }
 
 .logs-card h2 {

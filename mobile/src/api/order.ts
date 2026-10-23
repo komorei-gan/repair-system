@@ -1,7 +1,7 @@
 /**
  * 报修端工单接口（design.md §3.2）。
  */
-import { http } from './request'
+import { http, uploadFile } from './request'
 import type { CreateOrderPayload, OrderDetailVO, OrderVO, PageResult, UpdateOrderPayload } from '@/types/api'
 
 /** 我的报修列表（分页，按状态筛选） */
@@ -15,6 +15,11 @@ export function myOrders(
     pageSize,
     ...(status ? { status } : {}),
   })
+}
+
+/** 上传单张图片，返回完整可访问 URL */
+export function uploadImage(filePath: string): Promise<string> {
+  return uploadFile(filePath)
 }
 
 /** 提交报修工单 → 通知管理员 */

@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: repair-system
+  servlet:
+    multipart:
+      # 图片上传单文件与单次请求上限（超出抛 MaxUploadSizeExceededException，统一转 400）
+      max-file-size: 5MB
+      max-request-size: 5MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # createDatabaseIfNotExist=true：首次启动自动创建 repair_system 库；
@@ -50,3 +55,6 @@ app:
   cors:
     # 开发期放开跨域，上线收紧为具体前端域名（逗号分隔）
     allowed-origin-patterns: "*"
+  upload:
+    # 图片保存目录（相对项目启动目录，运行时归一化为绝对路径）
+    dir: ./uploads

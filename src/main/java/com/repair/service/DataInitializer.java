@@ -1,6 +1,7 @@
 package com.repair.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.repair.common.enums.AuditStatus;
 import com.repair.common.enums.OrderStatus;
 import com.repair.common.enums.RoleEnum;
 import com.repair.common.util.OrderNoUtil;
@@ -198,6 +199,7 @@ public class DataInitializer implements CommandLineRunner {
         admin.setRealName("系统管理员");
         admin.setRole(RoleEnum.ADMIN);
         admin.setStatus(1);
+        admin.setAuditStatus(AuditStatus.APPROVED);
         admin.setFinishCount(0);
         userService.save(admin);
         log.warn("已创建默认管理员账号 admin / admin123，正式部署请立即修改密码！");
@@ -235,6 +237,8 @@ public class DataInitializer implements CommandLineRunner {
         repairer.setRealName(realName);
         repairer.setRole(RoleEnum.REPAIRER);
         repairer.setStatus(1);
+        repairer.setAuditStatus(AuditStatus.APPROVED);
+        repairer.setReason("系统预置师傅");
         repairer.setFinishCount(0);
         userService.save(repairer);
         log.warn("已创建联调师傅账号 {} / {}，正式部署请删除或修改密码！", username, rawPassword);
