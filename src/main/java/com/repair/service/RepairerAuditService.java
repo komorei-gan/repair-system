@@ -13,6 +13,9 @@ public interface RepairerAuditService {
     /** 师傅审核分页查询：按审核状态（可选）与关键字（账号/姓名模糊，可选）筛选 */
     PageResult<RepairerAuditVO> pageAudit(Page<User> page, Integer auditStatus, String keyword);
 
+    /** 待审核（auditStatus=0）师傅申请数，供左侧菜单角标展示 */
+    long pendingCount();
+
     /** 通过/拒绝师傅（1 通过 / 2 拒绝），并给该师傅发送系统通知 */
     void audit(Long id, Integer auditStatus);
 }

@@ -71,4 +71,12 @@ public class AdminUserController {
         userService.updateStatus(id, request.getStatus());
         return Result.success();
     }
+
+    /** 批准密码重置（reset_approved 置 1，并通知该用户） */
+    @PutMapping("/{id}/approve-reset")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Void> approveReset(@PathVariable Long id) {
+        userService.approveReset(id);
+        return Result.success();
+    }
 }

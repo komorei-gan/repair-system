@@ -6,9 +6,11 @@ import com.repair.common.enums.RoleEnum;
 import com.repair.common.exception.BusinessException;
 import com.repair.common.result.ErrorCode;
 import com.repair.dto.ChangePasswordRequest;
+import com.repair.dto.ForgotPasswordRequest;
 import com.repair.dto.LoginRequest;
 import com.repair.dto.LoginResponse;
 import com.repair.dto.RegisterRequest;
+import com.repair.dto.ResetPasswordRequest;
 import com.repair.dto.UserInfoVO;
 import com.repair.entity.User;
 import com.repair.mapper.UserMapper;
@@ -142,5 +144,51 @@ public class AuthServiceImpl implements AuthService {
         userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
                 .eq("id", user.getId())
                 .set("password", passwordEncoder.encode(request.getNewPassword())));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String username = request.getUsername() == null ? null : request.getUsername().trim();
+        User user = userService.getByUsername(username);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "账号不存在");
+        }
+        // 标记为「已申请待批准」（reset_approved=1），供管理端按钮态识别
+        userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", user.getId())
+                .set("reset_approved", 1));
+        // 通知所有启用中的管理员前往用户管理处理
+        List<Long> adminIds = userService.listEnabledByRole(RoleEnum.ADMIN).stream()
+                .map(User::getId)
+                .toList();
+        notifyService.notifyUsers(adminIds, NotificationType.SYSTEM,
+                "密码重置申请",
+                "用户【" + user.getUsername() + "】申请重置密码，请前往用户管理处理。",
+                null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(ResetPasswordRequest request) {
+        String username = request.getUsername() == null ? null : request.getUsername().trim();
+        User user = userService.getByUsername(username);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "账号不存在");
+        }
+        // 仅「已批准」（reset_approved==2）才允许重置；未申请(0)/待批准(1)一律拦截
+        if (user.getResetApproved() == null || user.getResetApproved() != 2) {
+            throw new BusinessException(ErrorCode.RESET_NOT_APPROVED);
+        }
+        // 已批准：BCrypt 改密，并回写为「未申请」0（单次有效）
+        userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", user.getId())
+                .set("password", passwordEncoder.encode(request.getNewPassword()))
+                .set("reset_approved", 0));
+        // 状态变更写通知（AGENTS.md）
+        notifyService.notify(user.getId(), NotificationType.SYSTEM,
+                "密码已重置",
+                "您的密码已重置成功，请使用新密码登录。",
+                null);
     }
 }

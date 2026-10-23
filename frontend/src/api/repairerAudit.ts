@@ -24,6 +24,11 @@ export function pageRepairerAudit(params: RepairerAuditQueryParams): Promise<Pag
   })
 }
 
+/** 待审核（auditStatus=0）师傅申请数，供左侧菜单角标展示 */
+export function pendingRepairerAuditCount(): Promise<number> {
+  return http.get<number>('/api/admin/repairers/audit/pending-count')
+}
+
 /** 通过/拒绝师傅（auditStatus: 1 通过 / 2 拒绝） */
 export function updateRepairerAudit(id: number, auditStatus: 1 | 2): Promise<void> {
   return http.put<void>(`/api/admin/repairers/audit/${id}`, { auditStatus })

@@ -26,6 +26,9 @@ public class UserInfoVO {
     /** 1 启用 / 0 禁用 */
     private Integer status;
 
+    /** 密码重置流转标记：0 未申请 / 1 已申请待批准 / 2 已批准 */
+    private Integer resetApproved;
+
     private String avatar;
 
     private LocalDateTime createdAt;
@@ -38,6 +41,7 @@ public class UserInfoVO {
                 .phone(user.getPhone())
                 .role(user.getRole())
                 .status(user.getStatus())
+                .resetApproved(user.getResetApproved())
                 .avatar(user.getAvatar())
                 .createdAt(user.getCreatedAt())
                 .build();

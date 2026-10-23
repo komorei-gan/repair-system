@@ -28,6 +28,8 @@ export interface UserInfo {
   avatar: string | null
   /** 1 启用 / 0 禁用（管理端用户列表展示） */
   status?: number
+  /** 密码重置流转标记：0 未申请 / 1 已申请待批准 / 2 已批准（管理端用户列表展示） */
+  resetApproved?: number
   /** 创建时间（管理端用户列表展示） */
   createdAt?: string
 }

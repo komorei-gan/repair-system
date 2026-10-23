@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as orderApi from '@/api/order'
 import * as categoryApi from '@/api/category'
+import { useAppStore } from '@/stores/app'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
 import type { Category, OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
@@ -37,6 +38,7 @@ const VALID_STATUSES = STATUS_TABS.filter((t) => t.status).map((t) => t.status a
 
 const router = useRouter()
 const route = useRoute()
+const appStore = useAppStore()
 
 /* ---------- 筛选状态（activeTab 从 URL 的 status 参数初始化） ---------- */
 function resolveTabFromQuery(): TabValue {
@@ -195,6 +197,10 @@ async function onDelete(row: OrderVO): Promise<void> {
   try {
     await orderApi.deleteOrder(row.id)
     ElMessage.success('工单已删除')
+    // 删除的 PENDING 工单才影响待派单数（CANCELLED 删除不计数）
+    if (row.status === 'PENDING') {
+      appStore.adjustDispatchPendingCount(-1)
+    }
     await loadOrders()
   } catch {
     // 错误提示已由 axios 拦截器统一处理（含「流转中的工单无法删除」）

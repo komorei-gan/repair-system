@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
  * 管理端布局骨架：侧边栏 + 顶栏 + 主内容区（router-view）。
+ * 进入后台布局即拉取左侧菜单三项角标计数（派单中心 / 师傅审核 / 通知中心）。
  */
-import { watch } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import SidebarNav from './components/SidebarNav.vue'
@@ -10,6 +11,11 @@ import TopBar from './components/TopBar.vue'
 
 const route = useRoute()
 const appStore = useAppStore()
+
+// 进入后台即拉取左侧菜单角标计数（红点状态），后续由操作与轮询驱动更新
+onMounted(() => {
+  void appStore.refreshBadgeCounts()
+})
 
 // 路由切换时关闭移动端抽屉与通知面板
 watch(

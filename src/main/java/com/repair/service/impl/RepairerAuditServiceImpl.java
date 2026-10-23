@@ -46,6 +46,13 @@ public class RepairerAuditServiceImpl implements RepairerAuditService {
     }
 
     @Override
+    public long pendingCount() {
+        return userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .eq(User::getRole, RoleEnum.REPAIRER)
+                .eq(User::getAuditStatus, AuditStatus.PENDING));
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void audit(Long id, Integer auditStatus) {
         // 管理端仅允许「通过 / 拒绝」，不允许反向置回待审核

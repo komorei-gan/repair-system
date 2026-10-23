@@ -33,3 +33,8 @@ export function pageUsers(params: UserQueryParams): Promise<PageResult<UserInfo>
 export function updateUserStatus(id: number, status: 0 | 1): Promise<void> {
   return http.put<void>(`/api/admin/users/${id}/status`, { status })
 }
+
+/** 批准密码重置（reset_approved 置 1，并通知该用户） */
+export function approveReset(id: number): Promise<void> {
+  return http.put<void>(`/api/admin/users/${id}/approve-reset`)
+}

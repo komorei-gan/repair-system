@@ -1,9 +1,14 @@
 /**
- * 应用级 UI 状态：移动端侧栏开合、通知面板开合、待受理工单数角标、通知未读数角标。
+ * 应用级 UI 状态：移动端侧栏开合、通知面板开合、左侧菜单三个角标计数、通知未读数。
+ * 三个角标计数集中在此，供左侧菜单（SidebarNav）与顶栏铃铛（TopBar）共用：
+ * - dispatchPendingCount：派单中心角标（状态为 PENDING 的待派单工单数）
+ * - repairerAuditPendingCount：师傅审核角标（auditStatus=0 待审核师傅申请数）
+ * - unreadCount：通知未读数（左侧通知中心菜单 + 右上角铃铛共用同一份）
  */
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { pendingCount as fetchPendingCount } from '@/api/order'
+import { pendingCount as fetchOrderPendingCount } from '@/api/order'
+import { pendingRepairerAuditCount as fetchRepairerAuditPendingCount } from '@/api/repairerAudit'
 import { unreadCount as fetchUnreadCount } from '@/api/notification'
 
 export const useAppStore = defineStore('app', () => {
@@ -11,9 +16,11 @@ export const useAppStore = defineStore('app', () => {
   const sidebarOpen = ref(false)
   /** 顶栏通知面板 */
   const notifOpen = ref(false)
-  /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
-  const pendingCount = ref(0)
-  /** 通知未读数，供顶栏铃铛角标展示 */
+  /** 待派单（PENDING）工单数，供「派单中心」菜单角标展示 */
+  const dispatchPendingCount = ref(0)
+  /** 待审核（auditStatus=0）师傅申请数，供「师傅审核」菜单角标展示 */
+  const repairerAuditPendingCount = ref(0)
+  /** 通知未读数，供左侧「通知中心」菜单与顶栏铃铛角标共同展示 */
   const unreadCount = ref(0)
   /**
    * 工单详情刷新令牌：递增即通知当前详情页重新拉取数据。
@@ -46,15 +53,25 @@ export const useAppStore = defineStore('app', () => {
   function reset(): void {
     sidebarOpen.value = false
     notifOpen.value = false
-    pendingCount.value = 0
+    dispatchPendingCount.value = 0
+    repairerAuditPendingCount.value = 0
     unreadCount.value = 0
     orderDetailRefreshToken.value = 0
   }
 
-  /** 拉取待受理工单数（失败静默保留上次值） */
-  async function refreshPendingCount(): Promise<void> {
+  /** 拉取待派单工单数（失败静默保留上次值） */
+  async function refreshDispatchPendingCount(): Promise<void> {
     try {
-      pendingCount.value = Number(await fetchPendingCount())
+      dispatchPendingCount.value = Number(await fetchOrderPendingCount())
+    } catch {
+      /* 后端未启动时静默 */
+    }
+  }
+
+  /** 拉取待审核师傅申请数（失败静默保留上次值） */
+  async function refreshRepairerAuditPendingCount(): Promise<void> {
+    try {
+      repairerAuditPendingCount.value = Number(await fetchRepairerAuditPendingCount())
     } catch {
       /* 后端未启动时静默 */
     }
@@ -71,6 +88,18 @@ export const useAppStore = defineStore('app', () => {
   }
 
   /**
+   * 一次性拉取左侧菜单全部角标计数（进入后台布局时调用）。
+   * 三个请求并行发出，互不阻塞，失败各自静默保留上次值。
+   */
+  async function refreshBadgeCounts(): Promise<void> {
+    await Promise.all([
+      refreshDispatchPendingCount(),
+      refreshRepairerAuditPendingCount(),
+      refreshUnreadCount(),
+    ])
+  }
+
+  /**
    * 直接设置未读数（标记已读/未读后本地同步角标用，无需再请求）。
    * 传 delta 时为相对增减；传绝对值为直接覆盖。均钳制在 [0, ∞)。
    */
@@ -83,10 +112,21 @@ export const useAppStore = defineStore('app', () => {
     unreadCount.value = Math.max(0, unreadCount.value + delta)
   }
 
+  /** 待派单工单数增减（派单成功 -1），钳制在 [0, ∞) */
+  function adjustDispatchPendingCount(delta: number): void {
+    dispatchPendingCount.value = Math.max(0, dispatchPendingCount.value + delta)
+  }
+
+  /** 待审核师傅申请数增减（审核通过/拒绝 -1），钳制在 [0, ∞) */
+  function adjustRepairerAuditPendingCount(delta: number): void {
+    repairerAuditPendingCount.value = Math.max(0, repairerAuditPendingCount.value + delta)
+  }
+
   return {
     sidebarOpen,
     notifOpen,
-    pendingCount,
+    dispatchPendingCount,
+    repairerAuditPendingCount,
     unreadCount,
     orderDetailRefreshToken,
     toggleSidebar,
@@ -94,9 +134,13 @@ export const useAppStore = defineStore('app', () => {
     closeOverlays,
     triggerOrderDetailRefresh,
     reset,
-    refreshPendingCount,
+    refreshDispatchPendingCount,
+    refreshRepairerAuditPendingCount,
     refreshUnreadCount,
+    refreshBadgeCounts,
     setUnreadCount,
     adjustUnreadCount,
+    adjustDispatchPendingCount,
+    adjustRepairerAuditPendingCount,
   }
 })

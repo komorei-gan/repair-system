@@ -9,7 +9,10 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assignOrder, reassignOrder } from '@/api/order'
 import { listUsersByRole } from '@/api/user'
+import { useAppStore } from '@/stores/app'
 import type { OrderVO, UserInfo } from '@/types/api'
+
+const appStore = useAppStore()
 
 const props = withDefaults(
   defineProps<{
@@ -90,6 +93,10 @@ async function submit(): Promise<void> {
     }
     visible.value = false
     emit('success')
+    // 派单成功：PENDING → ASSIGNED，待派单数 -1，同步左侧菜单红点
+    if (props.mode === 'assign') {
+      appStore.adjustDispatchPendingCount(-1)
+    }
   } catch {
     // 错误提示已由 axios 拦截器统一处理
   } finally {

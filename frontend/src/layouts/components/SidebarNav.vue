@@ -11,10 +11,13 @@ import IconSvg from '@/components/IconSvg.vue'
 interface NavItem {
   name: string
   icon: string
-  badge?: number
-  dot?: boolean
-  /** 是否展示「待受理工单数」动态角标（orders 菜单） */
-  pending?: boolean
+  /**
+   * 红点角标对应的计数来源（无此字段则不显示红点）：
+   * - dispatch      ：派单中心（存在待受理 PENDING 工单）
+   * - repairerAudit ：师傅审核（存在待审核 auditStatus=0 申请）
+   * - unread        ：通知中心（存在未读通知）
+   */
+  countKey?: 'dispatch' | 'repairerAudit' | 'unread'
 }
 
 interface NavGroup {
@@ -34,15 +37,15 @@ const groups: NavGroup[] = [
   {
     label: '工单管理',
     items: [
-      { name: 'orders', icon: 'i-clipboard', pending: true },
-      { name: 'dispatch', icon: 'i-send' },
+      { name: 'orders', icon: 'i-clipboard' },
+      { name: 'dispatch', icon: 'i-send', countKey: 'dispatch' },
     ],
   },
   {
     label: '资源管理',
     items: [
       { name: 'repairers', icon: 'i-users' },
-      { name: 'repairer-audit', icon: 'i-audit' },
+      { name: 'repairer-audit', icon: 'i-audit', countKey: 'repairerAudit' },
       { name: 'users', icon: 'i-user' },
       { name: 'categories', icon: 'i-tags' },
     ],
@@ -50,7 +53,7 @@ const groups: NavGroup[] = [
   {
     label: '系统',
     items: [
-      { name: 'notifications', icon: 'i-bell', dot: true },
+      { name: 'notifications', icon: 'i-bell', countKey: 'unread' },
       { name: 'settings', icon: 'i-sliders' },
     ],
   },
@@ -70,6 +73,14 @@ const routeMeta = computed(() => {
 
 function isActive(name: string): boolean {
   return route.name === name
+}
+
+/** 判断某菜单是否应显示红点（计数 > 0 即显示，不展示具体数字） */
+function hasDot(item: NavItem): boolean {
+  if (item.countKey === 'dispatch') return appStore.dispatchPendingCount > 0
+  if (item.countKey === 'repairerAudit') return appStore.repairerAuditPendingCount > 0
+  if (item.countKey === 'unread') return appStore.unreadCount > 0
+  return false
 }
 
 function onNavigate(name: string): void {
@@ -111,13 +122,9 @@ function onNavigate(name: string): void {
         >
           <IconSvg :name="item.icon" />
           <span class="label">{{ routeMeta[item.name] }}</span>
-          <span v-if="item.pending && appStore.pendingCount > 0" class="nav-badge">
-            {{ appStore.pendingCount > 99 ? '99+' : appStore.pendingCount }}
-          </span>
-          <span v-else-if="item.badge" class="nav-badge">{{ item.badge }}</span>
-          <!-- 通知中心未读提示点：仅在存在未读消息时显示，全部已读后由 Pinia 状态驱动实时隐藏 -->
+          <!-- 纯红点角标：仅当对应计数 > 0 时显示，不展示具体数字 -->
           <span
-            v-else-if="item.dot && appStore.unreadCount > 0"
+            v-if="hasDot(item)"
             class="nav-dot"
             aria-hidden="true"
           ></span>
@@ -309,26 +316,12 @@ html.dark .nav-item.active {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nav-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 19px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  background: var(--red-50);
-  color: #e5484d;
-}
 .nav-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--blue-500);
-  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.13);
+  background: #f5222d;
+  box-shadow: 0 0 0 3px rgba(245, 34, 45, 0.13);
   flex: none;
 }
 
@@ -435,7 +428,6 @@ html.dark .side-version {
   }
   .brand-text,
   .nav-label,
-  .nav-badge,
   .nav-dot,
   .nav-item .label,
   .side-foot {
@@ -485,9 +477,6 @@ html.dark .side-version {
   }
   .nav-item .label {
     display: block;
-  }
-  .nav-badge {
-    display: inline-flex;
   }
   .nav-dot {
     display: inline-block;

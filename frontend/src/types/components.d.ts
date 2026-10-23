@@ -38,6 +38,7 @@ declare module 'vue' {
     ElTimeline: typeof import('element-plus/es')['ElTimeline']
     ElTimelineItem: typeof import('element-plus/es')['ElTimelineItem']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
+    HelpDialog: typeof import('./../components/HelpDialog.vue')['default']
     IconSprite: typeof import('./../components/IconSprite.vue')['default']
     IconSvg: typeof import('./../components/IconSvg.vue')['default']
     PagePlaceholder: typeof import('./../components/PagePlaceholder.vue')['default']

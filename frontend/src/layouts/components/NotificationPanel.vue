@@ -74,7 +74,7 @@ async function onReadOne(item: NotificationVO): Promise<void> {
   }
   appStore.toggleNotif(false)
 
-  // 系统通知：师傅注册申请 → 师傅审核页，并默认定位到「待审核」Tab
+  // 系统通知：师傅注册申请 → 师傅审核页；密码重置申请 → 用户管理页
   if (item.orderId === null || item.type === 'SYSTEM') {
     const text = `${item.title ?? ''}${item.content ?? ''}`
     if (text.includes('师傅注册')) {
@@ -83,6 +83,10 @@ async function onReadOne(item: NotificationVO): Promise<void> {
         .catch(() => {
           /* 忽略重复导航 / 导航被中止的 rejection */
         })
+    } else if (text.includes('密码重置') || text.includes('重置密码')) {
+      void router.push({ path: '/users' }).catch(() => {
+        /* 忽略重复导航 / 导航被中止的 rejection */
+      })
     }
     return
   }

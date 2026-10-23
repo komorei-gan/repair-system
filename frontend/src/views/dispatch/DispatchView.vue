@@ -9,6 +9,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as orderApi from '@/api/order'
+import { useAppStore } from '@/stores/app'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
 import type { OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
@@ -16,6 +17,7 @@ import AssignDialog from '@/components/AssignDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
+const appStore = useAppStore()
 
 /* ---------- 分页状态 ---------- */
 const pageNum = ref(1)
@@ -98,6 +100,8 @@ async function onDelete(row: OrderVO): Promise<void> {
   try {
     await orderApi.deleteOrder(row.id)
     ElMessage.success('工单已删除')
+    // 删除的必为 PENDING 工单，待派单数 -1，同步左侧菜单红点
+    appStore.adjustDispatchPendingCount(-1)
     await loadOrders()
   } catch {
     // 错误提示已由 axios 拦截器统一处理

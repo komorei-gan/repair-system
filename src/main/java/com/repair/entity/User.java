@@ -49,6 +49,9 @@ public class User implements Serializable {
     /** 申请理由（仅师傅注册时填写） */
     private String reason;
 
+    /** 密码重置流转标记：0 未申请 / 1 已申请待批准 / 2 已批准（忘记密码审批流） */
+    private Integer resetApproved;
+
     /** 师傅平均评分（仅 REPAIRER 使用） */
     private BigDecimal rating;
 

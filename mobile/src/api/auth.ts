@@ -13,3 +13,13 @@ export function login(username: string, password: string): Promise<LoginResponse
 export function register(payload: RegisterPayload): Promise<void> {
   return http.post<void>('/api/auth/register', payload)
 }
+
+/** 忘记密码申请：校验账号存在后通知所有启用管理员 */
+export function forgotPassword(username: string): Promise<void> {
+  return http.post<void>('/api/auth/forgot-password', { username })
+}
+
+/** 忘记密码自助重置：校验已批准后改密，成功后回写未批准 */
+export function resetPassword(username: string, newPassword: string): Promise<void> {
+  return http.post<void>('/api/auth/reset-password', { username, newPassword })
+}

@@ -8,6 +8,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pageRepairerAudit, updateRepairerAudit } from '@/api/repairerAudit'
+import { useAppStore } from '@/stores/app'
 import type { AuditStatus, RepairerAuditVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
@@ -19,6 +20,7 @@ const TABS: { label: string; value: AuditStatus }[] = [
 ]
 
 const route = useRoute()
+const appStore = useAppStore()
 
 /**
  * 解析路由 query 中的 tab 参数（0 待审核 / 1 已通过 / 2 已拒绝）。
@@ -129,6 +131,10 @@ async function onAudit(row: RepairerAuditVO, auditStatus: 1 | 2): Promise<void> 
   try {
     await updateRepairerAudit(row.id, auditStatus)
     ElMessage.success(`已${action}`)
+    // 待审核项 -1（仅从待审核 Tab 操作时生效，其他 Tab 无待审核项）
+    if (row.auditStatus === 0) {
+      appStore.adjustRepairerAuditPendingCount(-1)
+    }
     await load()
   } catch {
     // 错误提示已由 axios 拦截器统一处理

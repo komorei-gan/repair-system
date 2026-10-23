@@ -48,6 +48,13 @@ public class AdminRepairerAuditController {
         return Result.success(page);
     }
 
+    /** 待审核（auditStatus=0）师傅申请数，供左侧菜单角标展示 */
+    @GetMapping("/pending-count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Long> pendingCount() {
+        return Result.success(repairerAuditService.pendingCount());
+    }
+
     /** 通过/拒绝师傅（auditStatus: 1 通过 / 2 拒绝） */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

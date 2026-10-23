@@ -2,13 +2,14 @@
 /**
  * 顶栏 —— 面包屑、搜索、帮助、铃铛（30s 轮询未读数）、用户信息、登出。
  */
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import IconSvg from '@/components/IconSvg.vue'
 import NotificationPanel from './NotificationPanel.vue'
+import HelpDialog from '@/components/HelpDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,15 +17,19 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 
 let pollTimer: number | undefined
+/** 帮助中心弹窗显隐 */
+const helpVisible = ref(false)
 
 const pageTitle = computed(() => String(route.meta.title ?? ''))
 
 onMounted(() => {
   void appStore.refreshUnreadCount()
-  void appStore.refreshPendingCount()
+  void appStore.refreshDispatchPendingCount()
+  void appStore.refreshRepairerAuditPendingCount()
   pollTimer = window.setInterval(() => {
     void appStore.refreshUnreadCount()
-    void appStore.refreshPendingCount()
+    void appStore.refreshDispatchPendingCount()
+    void appStore.refreshRepairerAuditPendingCount()
   }, 30_000)
   document.addEventListener('click', onDocClick)
 })
@@ -113,7 +118,7 @@ async function onLogout(): Promise<void> {
     </nav>
 
     <div class="topbar-right">
-      <button type="button" class="icon-btn" aria-label="帮助中心">
+      <button type="button" class="icon-btn" aria-label="帮助中心" @click="helpVisible = true">
         <IconSvg name="i-help" :size="19" />
       </button>
 
@@ -158,6 +163,9 @@ async function onLogout(): Promise<void> {
         </template>
       </el-dropdown>
     </div>
+
+    <!-- 全局帮助中心弹窗 -->
+    <HelpDialog v-model="helpVisible" />
   </header>
 </template>
 

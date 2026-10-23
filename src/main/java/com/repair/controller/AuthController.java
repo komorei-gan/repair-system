@@ -2,9 +2,11 @@ package com.repair.controller;
 
 import com.repair.common.result.Result;
 import com.repair.dto.ChangePasswordRequest;
+import com.repair.dto.ForgotPasswordRequest;
 import com.repair.dto.LoginRequest;
 import com.repair.dto.LoginResponse;
 import com.repair.dto.RegisterRequest;
+import com.repair.dto.ResetPasswordRequest;
 import com.repair.dto.UserInfoVO;
 import com.repair.service.AuthService;
 import jakarta.validation.Valid;
@@ -50,6 +52,20 @@ public class AuthController {
     @PutMapping("/password")
     public Result<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
+        return Result.success();
+    }
+
+    /** 忘记密码申请（匿名）：校验账号存在后通知所有启用管理员 */
+    @PostMapping("/forgot-password")
+    public Result<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return Result.success();
+    }
+
+    /** 忘记密码自助重置（匿名）：校验已批准后 BCrypt 改密 */
+    @PostMapping("/reset-password")
+    public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
         return Result.success();
     }
 }

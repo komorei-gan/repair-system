@@ -5,7 +5,7 @@
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { pageUsers, updateUserStatus } from '@/api/user'
+import { pageUsers, updateUserStatus, approveReset } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
@@ -30,6 +30,8 @@ const users = ref<UserInfo[]>([])
 const total = ref(0)
 /** 正在切换状态的行（禁用按钮防重复点击） */
 const togglingId = ref<number | null>(null)
+/** 正在批准重置的行（禁用按钮防重复点击） */
+const approvingId = ref<number | null>(null)
 
 /** 拉取用户分页数据 */
 async function loadUsers(): Promise<void> {
@@ -123,6 +125,30 @@ async function onToggleStatus(row: UserInfo): Promise<void> {
   }
 }
 
+/* ---------- 批准密码重置 ---------- */
+async function onApproveReset(row: UserInfo): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `确定批准用户「${row.realName || row.username}」的密码重置申请吗？批准后该用户即可在移动端输入新密码重置。`,
+      '批准确认',
+      { confirmButtonText: '批准', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  approvingId.value = row.id
+  try {
+    await approveReset(row.id)
+    ElMessage.success('已批准密码重置')
+    await loadUsers()
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+  } finally {
+    approvingId.value = null
+  }
+}
+
 onMounted(() => {
   void loadUsers()
 })
@@ -202,7 +228,7 @@ onMounted(() => {
         <el-table-column label="创建时间" width="175" align="center">
           <template #default="{ row }">{{ row.createdAt || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="110" fixed="right" align="center">
+        <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button
               link
@@ -211,6 +237,21 @@ onMounted(() => {
               @click="onToggleStatus(row as UserInfo)"
             >
               {{ row.status === 1 ? '禁用' : '启用' }}
+            </el-button>
+            <el-button
+              link
+              type="primary"
+              :disabled="(row as UserInfo).resetApproved !== 1"
+              :loading="approvingId === row.id"
+              @click="onApproveReset(row as UserInfo)"
+            >
+              {{
+                (row as UserInfo).resetApproved === 1
+                  ? '批准重置'
+                  : (row as UserInfo).resetApproved === 2
+                    ? '已批准'
+                    : '未申请'
+              }}
             </el-button>
           </template>
         </el-table-column>

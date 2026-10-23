@@ -41,4 +41,7 @@ public interface UserService {
 
     /** 启用/禁用用户（status: 1 启用 / 0 禁用） */
     void updateStatus(Long id, Integer status);
+
+    /** 批准密码重置（reset_approved 置 1），并通知该用户 */
+    void approveReset(Long id);
 }

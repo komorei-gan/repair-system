@@ -3,6 +3,7 @@ package com.repair.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.repair.common.enums.AuditStatus;
+import com.repair.common.enums.NotificationType;
 import com.repair.common.enums.RoleEnum;
 import com.repair.common.exception.BusinessException;
 import com.repair.common.result.ErrorCode;
@@ -10,6 +11,7 @@ import com.repair.common.result.PageResult;
 import com.repair.dto.UserInfoVO;
 import com.repair.entity.User;
 import com.repair.mapper.UserMapper;
+import com.repair.service.NotifyService;
 import com.repair.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +28,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
 
     private final PasswordEncoder passwordEncoder;
+
+    private final NotifyService notifyService;
 
     @Override
     public User getByUsername(String username) {
@@ -105,5 +109,27 @@ public class UserServiceImpl implements UserService {
         userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
                 .eq("id", id)
                 .set("status", status));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void approveReset(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
+        // 幂等：已批准则直接返回，避免重复通知
+        if (user.getResetApproved() != null && user.getResetApproved() == 2) {
+            return;
+        }
+        // 批准：reset_approved 置为 2（已批准）
+        userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", id)
+                .set("reset_approved", 2));
+        // 状态变更写通知（AGENTS.md）
+        notifyService.notify(id, NotificationType.SYSTEM,
+                "密码重置申请已批准",
+                "您的密码重置申请已通过，请前往移动端登录页输入新密码完成重置。",
+                null);
     }
 }

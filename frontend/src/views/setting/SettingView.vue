@@ -6,6 +6,7 @@
  */
 import { ref } from 'vue'
 import IconSvg from '@/components/IconSvg.vue'
+import HelpDialog from '@/components/HelpDialog.vue'
 import PasswordView from './PasswordView.vue'
 import SystemInfoView from './SystemInfoView.vue'
 import ThemeView from './ThemeView.vue'
@@ -13,6 +14,8 @@ import ThemeView from './ThemeView.vue'
 type SettingTab = 'password' | 'system' | 'theme'
 
 const activeTab = ref<SettingTab>('password')
+/** 帮助中心弹窗显隐 */
+const helpVisible = ref(false)
 
 interface SettingItem {
   key: SettingTab
@@ -45,20 +48,28 @@ function switchTab(key: SettingTab): void {
       <!-- ============ 左侧：固定 240px 选项栏 ============ -->
       <aside class="card setting-rail" aria-label="设置选项">
         <button
-          v-for="(item, index) in items"
+          v-for="item in items"
           :key="item.key"
           type="button"
           class="setting-item"
-          :class="{
-            active: activeTab === item.key,
-            'no-border': index === items.length - 1,
-          }"
+          :class="{ active: activeTab === item.key }"
           @click="switchTab(item.key)"
         >
           <span class="item-icon" :class="item.tone">
             <IconSvg :name="item.icon" :size="16" />
           </span>
           <span class="item-label">{{ item.label }}</span>
+          <span class="item-arrow">
+            <IconSvg name="i-chevron-right" :size="15" />
+          </span>
+        </button>
+
+        <!-- 帮助中心：非 Tab，点击打开弹窗 -->
+        <button type="button" class="setting-item no-border" @click="helpVisible = true">
+          <span class="item-icon slate">
+            <IconSvg name="i-help" :size="16" />
+          </span>
+          <span class="item-label">帮助中心</span>
           <span class="item-arrow">
             <IconSvg name="i-chevron-right" :size="15" />
           </span>
@@ -72,6 +83,9 @@ function switchTab(key: SettingTab): void {
         <ThemeView v-else />
       </section>
     </div>
+
+    <!-- 帮助中心弹窗 -->
+    <HelpDialog v-model="helpVisible" />
   </div>
 </template>
 
