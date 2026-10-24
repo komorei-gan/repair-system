@@ -47,11 +47,19 @@ public class RepairerOrderController {
         return Result.success();
     }
 
-    /** 拒单（ASSIGNED → PENDING，必填原因）→ 通知管理员 */
-    @PutMapping("/orders/{id}/reject")
+    /** 申请改派（ASSIGNED → REASSIGNING，必填原因）→ 通知管理员 */
+    @PutMapping("/orders/{id}/reassign-request")
     @PreAuthorize("hasRole('REPAIRER')")
-    public Result<Void> reject(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
-        orderService.reject(id, request);
+    public Result<Void> reassignRequest(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
+        orderService.reassignRequest(id, request);
+        return Result.success();
+    }
+
+    /** 申请仲裁（PROCESSING → ARBITRATING，必填原因）→ 通知管理员 */
+    @PutMapping("/orders/{id}/arbitration-request")
+    @PreAuthorize("hasRole('REPAIRER')")
+    public Result<Void> arbitrationRequest(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
+        orderService.arbitrationRequest(id, request);
         return Result.success();
     }
 

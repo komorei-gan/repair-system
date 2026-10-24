@@ -27,6 +27,8 @@ const faqs = [
     v-model="visible"
     title="帮助中心"
     width="560px"
+    append-to-body
+    align-center
     :close-on-click-modal="false"
     destroy-on-close
   >

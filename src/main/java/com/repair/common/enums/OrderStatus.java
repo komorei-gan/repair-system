@@ -34,18 +34,28 @@ public final class OrderStatus {
     /** 已驳回（终态） */
     public static final String REJECTED = "REJECTED";
 
+    /** 申请改派中（师傅有事/不想修，等管理员审批） */
+    public static final String REASSIGNING = "REASSIGNING";
+
+    /** 恶意报修仲裁中（师傅申请驳回报修，等管理员审批） */
+    public static final String ARBITRATING = "ARBITRATING";
+
     /**
-     * 状态跳转表（design.md §1.3 逐条编码）：
-     * PENDING   -> ASSIGNED(派单) / REJECTED(驳回) / CANCELLED(取消)
-     * ASSIGNED  -> PROCESSING(接单) / PENDING(拒单) / ASSIGNED(改派) / CANCELLED(管理员取消)
-     * PROCESSING-> COMPLETED(完成) / ASSIGNED(改派)
-     * COMPLETED -> CONFIRMED(确认评价)
+     * 状态跳转表（design.md §1.3 + 改派/仲裁审批闭环）：
+     * PENDING    -> ASSIGNED(派单) / REJECTED(驳回) / CANCELLED(取消)
+     * ASSIGNED   -> PROCESSING(接单) / PENDING(拒单) / ASSIGNED(改派) / CANCELLED(管理员取消) / REASSIGNING(申请改派)
+     * PROCESSING -> COMPLETED(完成) / ASSIGNED(改派) / ARBITRATING(申请仲裁)
+     * REASSIGNING-> PENDING(同意改派，重新派单) / ASSIGNED(驳回改派，继续接单)
+     * ARBITRATING-> REJECTED(同意仲裁，驳回工单) / PROCESSING(驳回仲裁，打回重修)
+     * COMPLETED  -> CONFIRMED(确认评价)
      * 终态无出口。
      */
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
             PENDING, Set.of(ASSIGNED, REJECTED, CANCELLED),
-            ASSIGNED, Set.of(PROCESSING, PENDING, ASSIGNED, CANCELLED),
-            PROCESSING, Set.of(COMPLETED, ASSIGNED),
+            ASSIGNED, Set.of(PROCESSING, PENDING, ASSIGNED, CANCELLED, REASSIGNING),
+            PROCESSING, Set.of(COMPLETED, ASSIGNED, ARBITRATING),
+            REASSIGNING, Set.of(PENDING, ASSIGNED),
+            ARBITRATING, Set.of(REJECTED, PROCESSING),
             COMPLETED, Set.of(CONFIRMED),
             CONFIRMED, Set.of(),
             CANCELLED, Set.of(),

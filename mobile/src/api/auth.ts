@@ -23,3 +23,8 @@ export function forgotPassword(username: string): Promise<void> {
 export function resetPassword(username: string, newPassword: string): Promise<void> {
   return http.post<void>('/api/auth/reset-password', { username, newPassword })
 }
+
+/** 修改密码（校验原密码，成功后需重新登录） */
+export function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  return http.put<void>('/api/auth/password', { oldPassword, newPassword })
+}

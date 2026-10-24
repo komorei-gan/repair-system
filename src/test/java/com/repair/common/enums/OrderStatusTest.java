@@ -26,6 +26,13 @@ class OrderStatusTest {
         assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.PROCESSING, OrderStatus.COMPLETED));
         assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.PROCESSING, OrderStatus.ASSIGNED));
         assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.COMPLETED, OrderStatus.CONFIRMED));
+        // 新增：申请改派 / 申请仲裁 闭环
+        assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.ASSIGNED, OrderStatus.REASSIGNING));
+        assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.REASSIGNING, OrderStatus.PENDING));
+        assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.REASSIGNING, OrderStatus.ASSIGNED));
+        assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.PROCESSING, OrderStatus.ARBITRATING));
+        assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.ARBITRATING, OrderStatus.REJECTED));
+        assertDoesNotThrow(() -> OrderStatus.requireTransition(OrderStatus.ARBITRATING, OrderStatus.PROCESSING));
     }
 
     @Test
@@ -46,6 +53,13 @@ class OrderStatusTest {
         assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.PROCESSING, OrderStatus.CANCELLED));
         // 派单状态不能驳回（驳回仅限 PENDING）
         assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.ASSIGNED, OrderStatus.REJECTED));
+        // 新增中间态的非法跳转
+        assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.PENDING, OrderStatus.REASSIGNING));
+        assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.PENDING, OrderStatus.ARBITRATING));
+        assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.REASSIGNING, OrderStatus.REJECTED));
+        assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.REASSIGNING, OrderStatus.ARBITRATING));
+        assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.ARBITRATING, OrderStatus.COMPLETED));
+        assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.ARBITRATING, OrderStatus.CANCELLED));
     }
 
     @Test
@@ -55,6 +69,9 @@ class OrderStatusTest {
         assertTrue(OrderStatus.isTerminal(OrderStatus.REJECTED));
         assertFalse(OrderStatus.isTerminal(OrderStatus.PENDING));
         assertFalse(OrderStatus.isTerminal(OrderStatus.PROCESSING));
+        // 新增中间态非终态
+        assertFalse(OrderStatus.isTerminal(OrderStatus.REASSIGNING));
+        assertFalse(OrderStatus.isTerminal(OrderStatus.ARBITRATING));
 
         // 终态不允许任何跳转
         assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.CONFIRMED, OrderStatus.PENDING));
@@ -65,6 +82,9 @@ class OrderStatusTest {
     @Test
     void unknownStatusRejected() {
         assertFalse(OrderStatus.isValid("FOO"));
+        // 新增中间态为合法状态
+        assertTrue(OrderStatus.isValid(OrderStatus.REASSIGNING));
+        assertTrue(OrderStatus.isValid(OrderStatus.ARBITRATING));
         assertThrows(BusinessException.class, () -> OrderStatus.requireTransition("FOO", OrderStatus.PENDING));
         // 跳转到未知状态同样非法
         assertThrows(BusinessException.class, () -> OrderStatus.requireTransition(OrderStatus.PENDING, "FOO"));

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 首页：我的工单列表。
- * - 顶部 navbar（右侧「+ 提交报修」入口）
+ * - 顶部 navbar（右侧「个人中心」入口）
  * - 状态筛选 tabs
  * - 工单卡片列表：分页（触底加载）、下拉刷新、空态、加载失败重试
  */
@@ -9,7 +9,7 @@ import { ref, computed } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import { useToast } from '@wot-ui/ui'
 import { myOrders, cancelOrder, confirmOrder } from '@/api/order'
-import { clearToken, getCachedUser, getToken } from '@/utils/token'
+import { getCachedUser, getToken } from '@/utils/token'
 import { STATUS_FILTERS, orderStatusLabel, orderStatusCls } from '@/utils/status'
 import type { OrderVO, OrderStatus, UserInfo } from '@/types/api'
 
@@ -102,19 +102,9 @@ function goEdit(id: number) {
   uni.navigateTo({ url: `/pages/order/edit?id=${id}` })
 }
 
-/** 退出登录：二次确认后清除凭证并回到登录页 */
-function handleLogout() {
-  uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
-    confirmColor: '#f5222d',
-    success: (res) => {
-      if (!res.confirm) return
-      // 清除本地凭证（等价于 removeStorageSync('repair_token' / 'repair_user')）
-      clearToken()
-      uni.reLaunch({ url: '/pages/login/login' })
-    },
-  })
+/** 前往个人中心 */
+function goProfile() {
+  uni.navigateTo({ url: '/pages/user/profile' })
 }
 
 /** 打开撤回弹窗 */
@@ -211,9 +201,9 @@ onReachBottom(() => {
       bordered
     >
       <template #right>
-        <view class="nav-logout" @click="handleLogout">
-          <wd-icon name="poweroff" size="16px" custom-class="nav-logout__icon" />
-          <text class="nav-logout__text">退出</text>
+        <view class="nav-profile" @click="goProfile">
+          <wd-icon name="user-circle" size="18px" custom-class="nav-profile__icon" />
+          <text class="nav-profile__text">个人中心</text>
         </view>
       </template>
     </wd-navbar>
@@ -380,22 +370,22 @@ onReachBottom(() => {
   background: #f4f7f9;
 }
 
-/* 导航栏右侧「退出」按钮（淡灰，不喧宾夺主） */
-.nav-logout {
+/* 导航栏右侧「个人中心」入口 */
+.nav-profile {
   display: flex;
   align-items: center;
   padding: 2px 6px;
-  color: #a8b0bd;
+  color: #1890ff;
 }
 
-.nav-logout__icon {
+.nav-profile__icon {
   margin-right: 2px;
-  color: #a8b0bd;
+  color: #1890ff;
 }
 
-.nav-logout__text {
+.nav-profile__text {
   font-size: 13px;
-  color: #a8b0bd;
+  color: #1890ff;
 }
 
 /* 右下角悬浮按钮（原生 view） */

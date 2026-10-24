@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
  * 登录页：对接 POST /api/auth/login。
- * - 报修人（REPORTER）正常进入报修首页；
- * - 维修师傅（REPAIRER）已通过审核：本期提示「师傅端建设中」；
+ * - 顶部角色切换「我是用户 / 我是维修师傅」，默认用户；
+ * - 登录成功后校验所选角色与后端 user.role 是否匹配，不匹配则提示且不落库 token；
+ * - REPORTER → /pages/index/index；REPAIRER → /pages/master/index；
  * - 待审核 / 已拒绝的师傅：由后端返回 403 + 明确文案，request 层统一 toast 提示。
  */
 import { ref } from 'vue'
@@ -12,11 +13,17 @@ import { setCachedUser, setToken, clearToken } from '@/utils/token'
 
 const toast = useToast()
 
+/** 登录身份选择，默认「我是用户」 */
+const role = ref<'REPORTER' | 'REPAIRER'>('REPORTER')
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 /** 密码是否明文显示（由我们自己的眼睛图标控制） */
 const showPwd = ref(false)
+
+function switchRole(value: 'REPORTER' | 'REPAIRER') {
+  role.value = value
+}
 
 /* ---------- 忘记密码弹窗 ---------- */
 const forgotVisible = ref(false)
@@ -62,17 +69,22 @@ async function handleLogin() {
   loading.value = true
   try {
     const res = await login(username.value.trim(), password.value)
-    // 已通过审核的师傅：本期师傅端尚未建设，仅提示、不进入报修人首页
-    if (res.user.role === 'REPAIRER') {
+    // 角色一致性校验：所选身份必须与后端实际角色一致，不一致则提示且不写入 token
+    if (role.value === 'REPAIRER' && res.user.role !== 'REPAIRER') {
       clearToken()
-      toast.show('师傅端建设中，敬请期待')
+      toast.error('该账号不是维修师傅，请检查身份选择')
+      return
+    }
+    if (role.value === 'REPORTER' && res.user.role !== 'REPORTER') {
+      clearToken()
+      toast.error('该账号不是报修用户，请检查身份选择')
       return
     }
     setToken(res.token)
     setCachedUser(res.user)
     toast.success('登录成功')
     setTimeout(() => {
-      uni.reLaunch({ url: '/pages/index/index' })
+      uni.reLaunch({ url: res.user.role === 'REPAIRER' ? '/pages/master/index' : '/pages/index/index' })
     }, 300)
   } catch {
     // 错误提示已由 request 层统一 showToast 处理（含待审核/已拒绝的审核拦截文案）
@@ -161,7 +173,27 @@ async function submitReset() {
     <!-- 悬浮卡片表单 -->
     <view class="login-card">
       <view class="card-title">欢迎登录</view>
-      <view class="card-subtitle">请使用您的账号登录</view>
+      <view class="card-subtitle">请选择身份并使用对应账号登录</view>
+
+      <!-- 角色切换（与注册页一致） -->
+      <view class="role-switch">
+        <view
+          class="role-item"
+          :class="{ 'is-active': role === 'REPORTER' }"
+          @click="switchRole('REPORTER')"
+        >
+          <wd-icon name="user" size="20px" custom-class="role-item__icon" />
+          <text class="role-item__text">我是用户</text>
+        </view>
+        <view
+          class="role-item"
+          :class="{ 'is-active': role === 'REPAIRER' }"
+          @click="switchRole('REPAIRER')"
+        >
+          <wd-icon name="tool" size="20px" custom-class="role-item__icon" />
+          <text class="role-item__text">我是维修师傅</text>
+        </view>
+      </view>
 
       <view class="field">
         <wd-input
@@ -176,11 +208,11 @@ async function submitReset() {
         <view class="pwd-field">
           <wd-icon name="lock" size="18px" custom-class="pwd-field__prefix" />
           <!-- #ifdef H5 -->
-          <!-- H5：始终 text + text-security 遮蔽，浏览器不会出现自带的密码眼睛 -->
+          <!-- H5：有内容时才 text-security 遮蔽，空态保留文字 placeholder -->
           <input
             v-model="password"
             class="pwd-field__inner"
-            :class="{ 'is-masked': !showPwd }"
+            :class="{ 'is-masked': password && !showPwd }"
             type="text"
             placeholder="请输入密码"
             placeholder-style="color:#b0b8c4;font-size:28rpx;"
@@ -192,7 +224,7 @@ async function submitReset() {
           <input
             v-model="password"
             class="pwd-field__inner"
-            :password="!showPwd"
+            :password="password && !showPwd"
             placeholder="请输入密码"
             placeholder-style="color:#b0b8c4;font-size:28rpx;"
             :maxlength="20"
@@ -259,7 +291,7 @@ async function submitReset() {
             <input
               v-model="newPassword"
               class="pwd-field__inner"
-              :class="{ 'is-masked': !showNewPwd }"
+              :class="{ 'is-masked': newPassword && !showNewPwd }"
               type="text"
               placeholder="请输入新密码（6-20 位）"
               placeholder-style="color:#b0b8c4;font-size:28rpx;"
@@ -270,7 +302,7 @@ async function submitReset() {
             <input
               v-model="newPassword"
               class="pwd-field__inner"
-              :password="!showNewPwd"
+              :password="newPassword && !showNewPwd"
               placeholder="请输入新密码（6-20 位）"
               placeholder-style="color:#b0b8c4;font-size:28rpx;"
               :maxlength="20"
@@ -298,7 +330,7 @@ async function submitReset() {
             <input
               v-model="confirmPassword"
               class="pwd-field__inner"
-              :class="{ 'is-masked': !showConfirmPwd }"
+              :class="{ 'is-masked': confirmPassword && !showConfirmPwd }"
               type="text"
               placeholder="请再次输入新密码"
               placeholder-style="color:#b0b8c4;font-size:28rpx;"
@@ -309,7 +341,7 @@ async function submitReset() {
             <input
               v-model="confirmPassword"
               class="pwd-field__inner"
-              :password="!showConfirmPwd"
+              :password="confirmPassword && !showConfirmPwd"
               placeholder="请再次输入新密码"
               placeholder-style="color:#b0b8c4;font-size:28rpx;"
               :maxlength="20"
@@ -430,6 +462,41 @@ async function submitReset() {
   margin-bottom: 40rpx;
   font-size: 26rpx;
   color: #8a94a6;
+}
+
+/* ===== 角色切换 ===== */
+.role-switch {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 36rpx;
+}
+.role-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 24rpx 12rpx;
+  border-radius: 20rpx;
+  background: #f5f7fa;
+  border: 2rpx solid transparent;
+  color: #606266;
+  transition: all 0.2s;
+}
+.role-item__icon {
+  color: #8a94a6;
+}
+.role-item__text {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+.role-item.is-active {
+  background: #eaf4ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+.role-item.is-active .role-item__icon {
+  color: #1890ff;
 }
 
 /* 输入框外层：悬浮阴影卡片态 */

@@ -26,6 +26,8 @@ export interface UserInfo {
   /** 角色：ADMIN 管理员 / REPAIRER 师傅 / REPORTER 报修人 */
   role: 'ADMIN' | 'REPAIRER' | 'REPORTER'
   avatar: string | null
+  /** 信誉分（报修人恶意报修被仲裁通过时扣减） */
+  creditScore?: number
 }
 
 /** 登录响应：token + 用户信息 */
@@ -78,6 +80,20 @@ export type OrderStatus =
   | 'CONFIRMED'
   | 'CANCELLED'
   | 'REJECTED'
+  | 'REASSIGNING'
+  | 'ARBITRATING'
+
+/** 师傅统计视图（GET /api/repairer/stats） */
+export interface RepairerStats {
+  /** 累计完成单量 */
+  finishCount: number
+  /** 平均评分（暂无评价时为 null） */
+  rating: number | null
+  /** 当前维修中（PROCESSING）单量 */
+  processingCount: number
+  /** 待接单（ASSIGNED）单量 */
+  assignedCount: number
+}
 
 /** 故障分类 */
 export interface Category {

@@ -58,6 +58,9 @@ public class User implements Serializable {
     /** 师傅累计完成单量（仅 REPAIRER 使用） */
     private Integer finishCount;
 
+    /** 信誉分（报修人恶意报修被仲裁通过时扣减，低于 60 自动禁用） */
+    private Integer creditScore;
+
     /** 头像 URL */
     private String avatar;
 

@@ -63,6 +63,9 @@ public class RepairOrder implements Serializable {
     /** 驳回/拒单原因 */
     private String rejectReason;
 
+    /** 师傅申请理由（申请改派 / 申请仲裁） */
+    private String applyReason;
+
     /** 取消原因 */
     private String cancelReason;
 

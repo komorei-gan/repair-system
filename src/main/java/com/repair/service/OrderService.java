@@ -3,6 +3,7 @@ package com.repair.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.repair.common.result.PageResult;
 import com.repair.dto.AssignRequest;
+import com.repair.dto.AuditRequest;
 import com.repair.dto.CompleteRequest;
 import com.repair.dto.ConfirmRequest;
 import com.repair.dto.CreateOrderRequest;
@@ -48,8 +49,11 @@ public interface OrderService {
     /** 师傅接单：ASSIGNED → PROCESSING，通知报修人 */
     void accept(Long id);
 
-    /** 师傅拒单：ASSIGNED → PENDING，通知管理员 */
-    void reject(Long id, ReasonRequest request);
+    /** 师傅申请改派：ASSIGNED → REASSIGNING，通知管理员 */
+    void reassignRequest(Long id, ReasonRequest request);
+
+    /** 师傅申请仲裁（恶意报修）：PROCESSING → ARBITRATING，通知管理员 */
+    void arbitrationRequest(Long id, ReasonRequest request);
 
     /** 师傅提交完成：PROCESSING → COMPLETED，通知报修人 */
     void complete(Long id, CompleteRequest request);
@@ -59,6 +63,12 @@ public interface OrderService {
 
     /** 管理员工单分页（状态/分类/时间/关键字） */
     PageResult<OrderVO> adminOrders(Page<?> page, OrderQuery query);
+
+    /** 待审批工单分页（type 可选：REASSIGN / ARBITRATE / 空=全部） */
+    PageResult<OrderVO> auditingOrders(Page<?> page, String type);
+
+    /** 管理员统一审批（改派 / 仲裁） */
+    void audit(Long id, AuditRequest request);
 
     /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
     long pendingCount();

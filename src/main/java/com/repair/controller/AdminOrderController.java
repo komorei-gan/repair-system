@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.repair.common.result.PageResult;
 import com.repair.common.result.Result;
 import com.repair.dto.AssignRequest;
+import com.repair.dto.AuditRequest;
 import com.repair.dto.OrderQuery;
 import com.repair.dto.OrderVO;
 import com.repair.dto.ReasonRequest;
@@ -46,6 +47,24 @@ public class AdminOrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public Result<Long> pendingCount() {
         return Result.success(orderService.pendingCount());
+    }
+
+    /** 待审批工单列表（type 可选：REASSIGN / ARBITRATE / 空=全部） */
+    @GetMapping("/auditing")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<PageResult<OrderVO>> auditing(
+            @RequestParam(defaultValue = "1") long pageNum,
+            @RequestParam(defaultValue = "10") long pageSize,
+            @RequestParam(required = false) String type) {
+        return Result.success(orderService.auditingOrders(new Page<>(pageNum, pageSize), type));
+    }
+
+    /** 统一审批（改派 / 仲裁），入参 { approve, type, remark } */
+    @PutMapping("/{id}/audit")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Void> audit(@PathVariable Long id, @Valid @RequestBody AuditRequest request) {
+        orderService.audit(id, request);
+        return Result.success();
     }
 
     /** 派单（PENDING → ASSIGNED，指定师傅）→ 通知师傅 */

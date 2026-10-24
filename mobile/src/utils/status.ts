@@ -12,6 +12,8 @@ export const ORDER_STATUS_MAP: Record<OrderStatus, { label: string; type: string
   CONFIRMED: { label: '已确认', type: 'success' },
   CANCELLED: { label: '已取消', type: 'default' },
   REJECTED: { label: '已驳回', type: 'danger' },
+  REASSIGNING: { label: '申请改派中', type: 'lightblue' },
+  ARBITRATING: { label: '仲裁中', type: 'warning' },
 }
 
 export function orderStatusLabel(status: OrderStatus): string {
@@ -31,6 +33,8 @@ const ORDER_STATUS_CLS: Record<OrderStatus, string> = {
   CONFIRMED: 'tag-confirmed',
   CANCELLED: 'tag-cancelled',
   REJECTED: 'tag-rejected',
+  REASSIGNING: 'tag-reassigning',
+  ARBITRATING: 'tag-arbitrating',
 }
 
 export function orderStatusCls(status: OrderStatus): string {

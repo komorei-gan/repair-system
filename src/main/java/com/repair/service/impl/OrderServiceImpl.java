@@ -11,6 +11,7 @@ import com.repair.common.result.ErrorCode;
 import com.repair.common.result.PageResult;
 import com.repair.common.util.OrderNoUtil;
 import com.repair.dto.AssignRequest;
+import com.repair.dto.AuditRequest;
 import com.repair.dto.CompleteRequest;
 import com.repair.dto.ConfirmRequest;
 import com.repair.dto.CreateOrderRequest;
@@ -310,23 +311,41 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reject(Long id, ReasonRequest request) {
+    public void reassignRequest(Long id, ReasonRequest request) {
         LoginUser current = SecurityUtil.getCurrentUser();
         RepairOrder order = lockOrder(id);
         requireRepairerOfOrder(order, current);
-        OrderStatus.requireTransition(order.getStatus(), OrderStatus.PENDING);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.REASSIGNING);
 
-        UpdateWrapper<RepairOrder> wrapper = new UpdateWrapper<RepairOrder>()
-                .set("repairer_id", null)
-                .set("reject_reason", request.getReason());
-        transition(order, OrderStatus.PENDING, wrapper);
-        recordLog(order.getId(), current, "REJECT", OrderStatus.ASSIGNED, OrderStatus.PENDING,
-                "师傅拒单：" + request.getReason());
+        transition(order, OrderStatus.REASSIGNING,
+                new UpdateWrapper<RepairOrder>().set("apply_reason", request.getReason()));
+        recordLog(order.getId(), current, "REASSIGN_REQUEST", OrderStatus.ASSIGNED, OrderStatus.REASSIGNING,
+                "师傅申请改派：" + request.getReason());
 
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
-                "师傅拒单",
-                "《" + order.getTitle() + "》被师傅拒单（单号：" + order.getOrderNo() + "），原因："
-                        + request.getReason() + "，请重新处理。",
+                "师傅申请改派",
+                "《" + order.getTitle() + "》的师傅申请改派（单号：" + order.getOrderNo() + "），原因："
+                        + request.getReason() + "，请审批。",
+                order.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void arbitrationRequest(Long id, ReasonRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        requireRepairerOfOrder(order, current);
+        OrderStatus.requireTransition(order.getStatus(), OrderStatus.ARBITRATING);
+
+        transition(order, OrderStatus.ARBITRATING,
+                new UpdateWrapper<RepairOrder>().set("apply_reason", request.getReason()));
+        recordLog(order.getId(), current, "ARBITRATE_REQUEST", OrderStatus.PROCESSING, OrderStatus.ARBITRATING,
+                "师傅申请仲裁（恶意报修）：" + request.getReason());
+
+        notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
+                "师傅申请仲裁",
+                "《" + order.getTitle() + "》的师傅申请仲裁（单号：" + order.getOrderNo() + "），原因："
+                        + request.getReason() + "，请审批。",
                 order.getId());
     }
 
@@ -402,6 +421,129 @@ public class OrderServiceImpl implements OrderService {
     public long pendingCount() {
         return repairOrderMapper.selectCount(new LambdaQueryWrapper<RepairOrder>()
                 .eq(RepairOrder::getStatus, OrderStatus.PENDING));
+    }
+
+    @Override
+    public PageResult<OrderVO> auditingOrders(Page<?> page, String type) {
+        // type 合法值：REASSIGN / ARBITRATE；空或非法一律查全部待审批
+        boolean reassign = "REASSIGN".equalsIgnoreCase(type == null ? "" : type.trim());
+        boolean arbitrate = "ARBITRATE".equalsIgnoreCase(type == null ? "" : type.trim());
+        LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
+                .orderByDesc(RepairOrder::getCreatedAt);
+        if (reassign) {
+            wrapper.eq(RepairOrder::getStatus, OrderStatus.REASSIGNING);
+        } else if (arbitrate) {
+            wrapper.eq(RepairOrder::getStatus, OrderStatus.ARBITRATING);
+        } else {
+            wrapper.in(RepairOrder::getStatus, OrderStatus.REASSIGNING, OrderStatus.ARBITRATING);
+        }
+        Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
+        return PageResult.from(result.convert(this::toVO));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void audit(Long id, AuditRequest request) {
+        LoginUser current = SecurityUtil.getCurrentUser();
+        RepairOrder order = lockOrder(id);
+        String type = request.getType() == null ? "" : request.getType().trim();
+        boolean approve = Boolean.TRUE.equals(request.getApprove());
+        String remark = StringUtils.hasText(request.getRemark()) ? request.getRemark().trim() : "";
+
+        if ("ARBITRATE".equalsIgnoreCase(type)) {
+            auditArbitrate(order, current, approve, remark);
+        } else if ("REASSIGN".equalsIgnoreCase(type)) {
+            auditReassign(order, current, approve, remark);
+        } else {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "审批类型非法，仅支持 REASSIGN / ARBITRATE");
+        }
+    }
+
+    /** 仲裁审批：同意 → REJECTED 并扣报修人信誉分；驳回 → PROCESSING 打回重修 */
+    private void auditArbitrate(RepairOrder order, LoginUser current, boolean approve, String remark) {
+        if (approve) {
+            OrderStatus.requireTransition(order.getStatus(), OrderStatus.REJECTED);
+            transition(order, OrderStatus.REJECTED,
+                    new UpdateWrapper<RepairOrder>().set("reject_reason", order.getApplyReason()));
+            recordLog(order.getId(), current, "AUDIT", OrderStatus.ARBITRATING, OrderStatus.REJECTED,
+                    "仲裁通过，驳回工单" + (remark.isEmpty() ? "" : "（备注：" + remark + "）"));
+
+            // 扣减报修人信誉分，低于 60 自动禁用（同一事务，行锁防并发丢更新）
+            deductReporterCredit(order.getReporterId());
+
+            notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                    "仲裁已通过",
+                    "《" + order.getTitle() + "》仲裁通过，工单已驳回（单号：" + order.getOrderNo() + "）。",
+                    order.getId());
+            notifyService.notify(order.getReporterId(), NotificationType.SYSTEM,
+                    "报修被驳回，信誉分已扣减",
+                    "您的报修《" + order.getTitle() + "》经仲裁被驳回（单号：" + order.getOrderNo()
+                            + "），信誉分已扣减 10 分。",
+                    order.getId());
+        } else {
+            OrderStatus.requireTransition(order.getStatus(), OrderStatus.PROCESSING);
+            transition(order, OrderStatus.PROCESSING, new UpdateWrapper<>());
+            recordLog(order.getId(), current, "AUDIT", OrderStatus.ARBITRATING, OrderStatus.PROCESSING,
+                    "仲裁驳回，打回重修" + (remark.isEmpty() ? "" : "（备注：" + remark + "）"));
+
+            notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                    "仲裁未通过，请继续维修",
+                    "《" + order.getTitle() + "》的仲裁申请未通过（单号：" + order.getOrderNo() + "），请继续维修。",
+                    order.getId());
+        }
+    }
+
+    /** 改派审批：同意 → PENDING 重新派单；驳回 → ASSIGNED 继续接单 */
+    private void auditReassign(RepairOrder order, LoginUser current, boolean approve, String remark) {
+        if (approve) {
+            OrderStatus.requireTransition(order.getStatus(), OrderStatus.PENDING);
+            transition(order, OrderStatus.PENDING,
+                    new UpdateWrapper<RepairOrder>()
+                            .set("repairer_id", null)
+                            .set("assign_time", null)
+                            .set("accept_time", null));
+            recordLog(order.getId(), current, "AUDIT", OrderStatus.REASSIGNING, OrderStatus.PENDING,
+                    "改派通过，重新派单" + (remark.isEmpty() ? "" : "（备注：" + remark + "）"));
+
+            notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                    "改派申请已通过",
+                    "《" + order.getTitle() + "》的改派申请已通过（单号：" + order.getOrderNo() + "），无需继续处理。",
+                    order.getId());
+            notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
+                    "改派已通过，待重新派单",
+                    "《" + order.getTitle() + "》的改派申请已通过（单号：" + order.getOrderNo() + "），请重新派单。",
+                    order.getId());
+        } else {
+            OrderStatus.requireTransition(order.getStatus(), OrderStatus.ASSIGNED);
+            transition(order, OrderStatus.ASSIGNED, new UpdateWrapper<>());
+            recordLog(order.getId(), current, "AUDIT", OrderStatus.REASSIGNING, OrderStatus.ASSIGNED,
+                    "改派驳回，继续接单" + (remark.isEmpty() ? "" : "（备注：" + remark + "）"));
+
+            notifyService.notify(order.getRepairerId(), NotificationType.ORDER,
+                    "改派申请未通过",
+                    "《" + order.getTitle() + "》的改派申请未通过（单号：" + order.getOrderNo() + "），请继续接单。",
+                    order.getId());
+        }
+    }
+
+    /** 扣减报修人信誉分：行锁读取 → 减 10 → 低于 60 禁用（同一事务） */
+    private void deductReporterCredit(Long reporterId) {
+        if (reporterId == null) {
+            return;
+        }
+        User reporter = userMapper.selectByIdForUpdate(reporterId);
+        if (reporter == null) {
+            return;
+        }
+        int current = reporter.getCreditScore() == null ? 100 : reporter.getCreditScore();
+        int newScore = current - 10;
+        UpdateWrapper<User> wrapper = new UpdateWrapper<User>()
+                .eq("id", reporterId)
+                .set("credit_score", newScore);
+        if (newScore < 60) {
+            wrapper.set("status", 0);
+        }
+        userMapper.update(null, wrapper);
     }
 
     @Override

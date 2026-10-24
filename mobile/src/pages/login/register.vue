@@ -158,11 +158,11 @@ function goBack() {
         <view class="pwd-field">
           <wd-icon name="lock" size="18px" custom-class="pwd-field__prefix" />
           <!-- #ifdef H5 -->
-          <!-- H5：始终 text + text-security 遮蔽，浏览器不会出现自带的密码眼睛 -->
+          <!-- H5：有内容时才 text-security 遮蔽，空态保留文字 placeholder -->
           <input
             v-model="password"
             class="pwd-field__inner"
-            :class="{ 'is-masked': !showPwd }"
+            :class="{ 'is-masked': password && !showPwd }"
             type="text"
             placeholder="请输入密码（6-20 位）"
             placeholder-style="color:#b0b8c4;font-size:28rpx;"
@@ -173,7 +173,7 @@ function goBack() {
           <input
             v-model="password"
             class="pwd-field__inner"
-            :password="!showPwd"
+            :password="password && !showPwd"
             placeholder="请输入密码（6-20 位）"
             placeholder-style="color:#b0b8c4;font-size:28rpx;"
             :maxlength="20"
