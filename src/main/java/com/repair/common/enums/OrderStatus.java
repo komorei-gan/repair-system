@@ -3,6 +3,8 @@ package com.repair.common.enums;
 import com.repair.common.exception.BusinessException;
 import com.repair.common.result.ErrorCode;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -83,5 +85,23 @@ public final class OrderStatus {
     /** 是否为合法状态码 */
     public static boolean isValid(String status) {
         return ALLOWED_TRANSITIONS.containsKey(status);
+    }
+
+    /**
+     * 解析逗号分隔的状态列表，供「按多个状态 in 查询」使用。
+     * 前端 Tab 切换会传形如 {@code PENDING,ASSIGNED,PROCESSING} 的字符串。
+     * null / 空白返回 null（调用方应据此跳过状态过滤条件）；
+     * 其余按逗号拆分、trim、过滤空串并去重。
+     * 不做状态码合法性校验：非法码只会自然查不到数据，无安全风险。
+     */
+    public static List<String> parseCsv(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return Arrays.stream(status.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .toList();
     }
 }

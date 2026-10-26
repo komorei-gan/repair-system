@@ -10,8 +10,8 @@ import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-
 import { useToast } from '@wot-ui/ui'
 import { myOrders, cancelOrder, confirmOrder } from '@/api/order'
 import { getCachedUser, getToken } from '@/utils/token'
-import { STATUS_FILTERS, orderStatusLabel, orderStatusCls } from '@/utils/status'
-import type { OrderVO, OrderStatus, UserInfo } from '@/types/api'
+import { REPORTER_STATUS_FILTERS, orderStatusLabel, orderStatusCls } from '@/utils/status'
+import type { OrderVO, UserInfo } from '@/types/api'
 
 const toast = useToast()
 
@@ -22,7 +22,8 @@ const displayName = computed(() => user.value?.realName || user.value?.username 
 const PAGE_SIZE = 10
 
 const orders = ref<OrderVO[]>([])
-const activeFilter = ref<OrderStatus | ''>('')
+/** 当前激活筛选 Tab 的值：逗号分隔状态串或空串（空串=全部，不传 status） */
+const activeFilter = ref<string>('')
 const pageNum = ref(1)
 const total = ref(0)
 const loading = ref(false)
@@ -84,7 +85,7 @@ function loadMore() {
   fetchOrders(false)
 }
 
-function switchFilter(value: OrderStatus | '') {
+function switchFilter(value: string) {
   if (activeFilter.value === value) return
   activeFilter.value = value
   fetchOrders(true)
@@ -213,7 +214,7 @@ onReachBottom(() => {
       <scroll-view scroll-x class="filter-scroll">
         <view class="filter-inner">
           <view
-            v-for="item in STATUS_FILTERS"
+            v-for="item in REPORTER_STATUS_FILTERS"
             :key="item.value"
             :class="['filter-item', activeFilter === item.value ? 'is-active' : '']"
             @click="switchFilter(item.value)"
@@ -252,7 +253,7 @@ onReachBottom(() => {
               <text class="order-card__hash">#</text>
               <text class="order-card__no">{{ order.orderNo }}</text>
             </view>
-            <text class="order-tag" :class="orderStatusCls(order.status)">{{ orderStatusLabel(order.status) }}</text>
+            <text class="order-tag" :class="orderStatusCls(order.status, 'reporter')">{{ orderStatusLabel(order.status, 'reporter') }}</text>
           </view>
           <view class="order-card__title">{{ order.title }}</view>
           <view class="order-card__meta">

@@ -96,4 +96,27 @@ class OrderStatusTest {
                 () -> OrderStatus.requireTransition(OrderStatus.PENDING, OrderStatus.COMPLETED));
         assertEquals(400, e.getCode());
     }
+
+    @Test
+    void parseCsvSplitsAndTrims() {
+        assertEquals(java.util.List.of("PENDING", "ASSIGNED", "PROCESSING"),
+                OrderStatus.parseCsv("PENDING,ASSIGNED,PROCESSING"));
+        assertEquals(java.util.List.of("PENDING", "ASSIGNED"),
+                OrderStatus.parseCsv(" PENDING ,, ASSIGNED "));
+    }
+
+    @Test
+    void parseCsvReturnsNullForBlank() {
+        assertEquals(null, OrderStatus.parseCsv(null));
+        assertEquals(null, OrderStatus.parseCsv("   "));
+        assertEquals(null, OrderStatus.parseCsv(""));
+    }
+
+    @Test
+    void parseCsvDeduplicatesAndKeepsUnknown() {
+        assertEquals(java.util.List.of("PENDING", "ASSIGNED"),
+                OrderStatus.parseCsv("PENDING,ASSIGNED,PENDING"));
+        // 非法状态码不校验，原样返回，便于自然查到空结果
+        assertEquals(java.util.List.of("FOO"), OrderStatus.parseCsv("FOO"));
+    }
 }

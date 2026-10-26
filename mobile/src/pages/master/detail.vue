@@ -293,10 +293,10 @@ onLoad((query) => {
       <!-- 详情内容 -->
       <template v-else-if="detail">
         <!-- 状态 Banner -->
-        <view class="status-banner" :class="orderStatusCls(detail.status)">
+        <view class="status-banner" :class="orderStatusCls(detail.status, 'repairer')">
           <view class="status-banner__inner">
             <text class="status-banner__label">当前状态</text>
-            <text class="status-banner__value">{{ orderStatusLabel(detail.status) }}</text>
+            <text class="status-banner__value">{{ orderStatusLabel(detail.status, 'repairer') }}</text>
           </view>
         </view>
 

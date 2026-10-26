@@ -9,26 +9,20 @@ import { ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import { repairerOrders } from '@/api/repairer'
 import { getToken } from '@/utils/token'
-import { orderStatusLabel, orderStatusCls } from '@/utils/status'
-import type { OrderVO, OrderStatus } from '@/types/api'
+import { REPAIRER_STATUS_FILTERS, orderStatusLabel, orderStatusCls } from '@/utils/status'
+import type { OrderVO } from '@/types/api'
 
 const PAGE_SIZE = 10
 
 const orders = ref<OrderVO[]>([])
-/** 当前激活的 tab（对应工单状态码） */
-const activeTab = ref<OrderStatus>('ASSIGNED')
+/** 当前激活的 tab 值：逗号分隔状态串或空串（空串=全部，不传 status） */
+const activeTab = ref<string>('')
 const pageNum = ref(1)
 const total = ref(0)
 const loading = ref(false)
 const initialLoading = ref(true)
 const loadState = ref<'loading' | 'error' | 'finished'>('loading')
 const loadError = ref(false)
-
-const TABS: { name: OrderStatus; title: string }[] = [
-  { name: 'ASSIGNED', title: '待接单' },
-  { name: 'PROCESSING', title: '维修中' },
-  { name: 'COMPLETED', title: '已完成' },
-]
 
 const hasMore = () => orders.value.length < total.value
 
@@ -71,8 +65,8 @@ function loadMore() {
   fetchOrders(false)
 }
 
-/** wd-tabs change 事件：name 即 tab 状态码 */
-function handleTabChange(e: { name: OrderStatus }) {
+/** wd-tabs change 事件：name 即 tab 值（逗号串或空串） */
+function handleTabChange(e: { name: string }) {
   const next = e.name
   if (activeTab.value === next) return
   activeTab.value = next
@@ -134,10 +128,10 @@ onReachBottom(() => {
     <!-- 状态切换 tabs -->
     <wd-tabs :model-value="activeTab" line-theme="underline" color="#1890ff" @change="handleTabChange">
       <wd-tab
-        v-for="item in TABS"
-        :key="item.name"
-        :name="item.name"
-        :title="item.title"
+        v-for="item in REPAIRER_STATUS_FILTERS"
+        :key="item.value"
+        :name="item.value"
+        :title="item.label"
       />
     </wd-tabs>
 
@@ -169,7 +163,7 @@ onReachBottom(() => {
               <text class="order-card__hash">#</text>
               <text class="order-card__no">{{ order.orderNo }}</text>
             </view>
-            <text class="order-tag" :class="orderStatusCls(order.status)">{{ orderStatusLabel(order.status) }}</text>
+            <text class="order-tag" :class="orderStatusCls(order.status, 'repairer')">{{ orderStatusLabel(order.status, 'repairer') }}</text>
           </view>
           <view class="order-card__title">{{ order.title }}</view>
           <view class="order-card__meta">

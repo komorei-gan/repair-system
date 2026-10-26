@@ -107,9 +107,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public PageResult<OrderVO> myOrders(Page<?> page, String status) {
         LoginUser current = SecurityUtil.getCurrentUser();
+        // 支持逗号分隔多状态查询（如 PENDING,ASSIGNED,PROCESSING），底层生成 status IN (...)
+        List<String> statuses = OrderStatus.parseCsv(status);
         LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
                 .eq(RepairOrder::getReporterId, current.getUserId())
-                .eq(StringUtils.hasText(status), RepairOrder::getStatus, status)
+                .in(statuses != null && !statuses.isEmpty(), RepairOrder::getStatus, statuses)
                 .orderByDesc(RepairOrder::getCreatedAt);
         Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
         return PageResult.from(result.convert(this::toVO));
@@ -281,9 +283,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public PageResult<OrderVO> repairerOrders(Page<?> page, String status) {
         LoginUser current = SecurityUtil.getCurrentUser();
+        // 支持逗号分隔多状态查询（如 REASSIGNING,ARBITRATING），底层生成 status IN (...)
+        List<String> statuses = OrderStatus.parseCsv(status);
         LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
                 .eq(RepairOrder::getRepairerId, current.getUserId())
-                .eq(StringUtils.hasText(status), RepairOrder::getStatus, status)
+                .in(statuses != null && !statuses.isEmpty(), RepairOrder::getStatus, statuses)
                 .orderByDesc(RepairOrder::getCreatedAt);
         Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
         return PageResult.from(result.convert(this::toVO));

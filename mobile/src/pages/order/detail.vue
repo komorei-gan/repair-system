@@ -5,16 +5,66 @@
  * - 基础信息卡片：单号 / 标题 / 分类 / 报修人 / 维修师傅 / 当前状态 / 报修时间
  * - 操作日志时间线：列表渲染后端 logs 数据
  */
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { orderDetail } from '@/api/order'
 import { getToken } from '@/utils/token'
 import { orderStatusLabel, orderStatusCls } from '@/utils/status'
-import type { OrderDetailVO } from '@/types/api'
+import type { OrderDetailVO, OrderLogVO } from '@/types/api'
 
 const detail = ref<OrderDetailVO | null>(null)
 const loading = ref(true)
 const loadError = ref(false)
+
+/** 驳回证据图片 URL 列表（applyImages 为 JSON 数组字符串） */
+const applyImageList = computed<string[]>(() => {
+  const raw = detail.value?.applyImages
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string' && !!v) : []
+  } catch {
+    return []
+  }
+})
+
+/** 是否有可展示的驳回说明（状态为 REJECTED 且至少存在理由或证据图） */
+const hasRejectNotice = computed(() => {
+  if (!detail.value || detail.value.status !== 'REJECTED') return false
+  return Boolean(detail.value.rejectReason) || applyImageList.value.length > 0
+})
+
+/** 预览驳回证据图片 */
+function previewApplyImage(url: string) {
+  uni.previewImage({ urls: applyImageList.value, current: url })
+}
+
+/**
+ * 用户端操作日志：过滤师傅申请类动作，并将审批最终结果中性化。
+ * - 过滤 REASSIGN_REQUEST（师傅申请改派）、ARBITRATE_REQUEST（师傅申请仲裁），用户不需要看。
+ * - AUDIT 为审批最终结果，改写为不暴露「仲裁/改派」术语的中性文案。
+ */
+const visibleLogs = computed<OrderLogVO[]>(() => {
+  const logs = detail.value?.logs ?? []
+  return logs
+    .filter((log) => log.action !== 'REASSIGN_REQUEST' && log.action !== 'ARBITRATE_REQUEST')
+    .map((log) => {
+      if (log.action !== 'AUDIT') return log
+      const from = log.fromStatus
+      const to = log.toStatus
+      let remark = log.remark
+      if (from === 'ARBITRATING' && to === 'REJECTED') {
+        remark = '管理员已同意驳回，工单已关闭'
+      } else if (from === 'ARBITRATING' && to === 'PROCESSING') {
+        remark = '管理员已打回，师傅将继续维修'
+      } else if (from === 'REASSIGNING' && to === 'PENDING') {
+        remark = '已为您重新安排维修师傅'
+      } else if (from === 'REASSIGNING' && to === 'ASSIGNED') {
+        remark = '维修师傅将继续为您服务'
+      }
+      return { ...log, remark }
+    })
+})
 
 function formatTime(time: string | null): string {
   if (!time) return '—'
@@ -77,10 +127,26 @@ onLoad((query) => {
       <!-- 详情内容 -->
       <template v-else-if="detail">
         <!-- 状态 Banner -->
-        <view class="status-banner" :class="orderStatusCls(detail.status)">
+        <view class="status-banner" :class="orderStatusCls(detail.status, 'reporter')">
           <view class="status-banner__inner">
             <text class="status-banner__label">当前状态</text>
-            <text class="status-banner__value">{{ orderStatusLabel(detail.status) }}</text>
+            <text class="status-banner__value">{{ orderStatusLabel(detail.status, 'reporter') }}</text>
+          </view>
+        </view>
+
+        <!-- 驳回说明（REJECTED 时显著展示师傅驳回理由与证据图） -->
+        <view v-if="hasRejectNotice" class="card reject-card">
+          <view class="section-title section-title--danger">驳回说明</view>
+          <text v-if="detail.rejectReason" class="reject-reason">{{ detail.rejectReason }}</text>
+          <view v-if="applyImageList.length" class="img-grid">
+            <image
+              v-for="(url, index) in applyImageList"
+              :key="index"
+              class="img-grid__item"
+              :src="url"
+              mode="aspectFill"
+              @click="previewApplyImage(url)"
+            />
           </view>
         </view>
 
@@ -142,12 +208,12 @@ onLoad((query) => {
         <view class="card">
           <view class="section-title">操作日志</view>
 
-          <view v-if="detail.logs && detail.logs.length === 0" class="empty-logs">
+          <view v-if="visibleLogs.length === 0" class="empty-logs">
             <wd-empty tip="暂无操作记录" />
           </view>
 
           <view v-else class="timeline">
-            <view v-for="(log, index) in detail.logs" :key="log.id" class="timeline-item">
+            <view v-for="(log, index) in visibleLogs" :key="log.id" class="timeline-item">
               <!-- 左侧时间轴 -->
               <view class="timeline-axis">
                 <view
@@ -157,7 +223,7 @@ onLoad((query) => {
                     log.action ? 'dot-' + log.action.toLowerCase() : '',
                   ]"
                 ></view>
-                <view v-if="index < detail.logs.length - 1" class="timeline-line"></view>
+                <view v-if="index < visibleLogs.length - 1" class="timeline-line"></view>
               </view>
 
               <!-- 右侧内容 -->
@@ -329,6 +395,37 @@ onLoad((query) => {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-main);
+}
+
+.section-title--danger {
+  color: #f5222d;
+}
+
+/* 驳回说明卡片 */
+.reject-reason {
+  display: block;
+  margin-bottom: 12px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #f5222d;
+  background: #fff1f0;
+  border-radius: 8px;
+  word-break: break-all;
+}
+
+/* 驳回证据图片网格 */
+.img-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.img-grid__item {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  background: var(--bg-input);
 }
 
 .empty-logs {
