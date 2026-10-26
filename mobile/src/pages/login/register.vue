@@ -30,10 +30,10 @@ function clearPassword() {
 }
 
 const inputStyle =
-  'background:transparent;border-radius:20rpx;padding:28rpx 24rpx;color:#1f2d3d;'
+  'background:transparent;border-radius:20rpx;padding:28rpx 24rpx;color:var(--text-main);'
 
 const textareaStyle =
-  'background:transparent;border-radius:20rpx;padding:24rpx;color:#1f2d3d;min-height:180rpx;'
+  'background:transparent;border-radius:20rpx;padding:24rpx;color:var(--text-main);min-height:180rpx;'
 
 function switchRole(value: 'REPORTER' | 'REPAIRER') {
   role.value = value
@@ -165,7 +165,7 @@ function goBack() {
             :class="{ 'is-masked': password && !showPwd }"
             type="text"
             placeholder="请输入密码（6-20 位）"
-            placeholder-style="color:#b0b8c4;font-size:28rpx;"
+            placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
             :maxlength="20"
           />
           <!-- #endif -->
@@ -175,7 +175,7 @@ function goBack() {
             class="pwd-field__inner"
             :password="password && !showPwd"
             placeholder="请输入密码（6-20 位）"
-            placeholder-style="color:#b0b8c4;font-size:28rpx;"
+            placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
             :maxlength="20"
           />
           <!-- #endif -->
@@ -246,7 +246,7 @@ function goBack() {
 .register-page {
   min-height: 100vh;
   box-sizing: border-box;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 /* ===== 顶部渐变品牌区 ===== */
@@ -312,7 +312,7 @@ function goBack() {
 .register-card {
   margin: -96rpx 40rpx 60rpx;
   padding: 44rpx 36rpx 48rpx;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 32rpx;
   box-shadow: 0 24rpx 60rpx -20rpx rgba(16, 62, 118, 0.24);
   position: relative;
@@ -333,13 +333,13 @@ function goBack() {
   gap: 10rpx;
   padding: 24rpx 12rpx;
   border-radius: 20rpx;
-  background: #f5f7fa;
+  background: var(--bg-input);
   border: 2rpx solid transparent;
-  color: #606266;
+  color: var(--text-sub);
   transition: all 0.2s;
 }
 .role-item__icon {
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 .role-item__text {
   font-size: 28rpx;
@@ -357,7 +357,7 @@ function goBack() {
 /* 输入框外层：悬浮阴影卡片态 */
 .field {
   margin-bottom: 28rpx;
-  background: #f5f7fa;
+  background: var(--bg-input);
   border-radius: 20rpx;
   box-shadow: 0 6rpx 18rpx -6rpx rgba(31, 45, 61, 0.08);
   overflow: hidden;
@@ -374,7 +374,7 @@ function goBack() {
 }
 .pwd-field__prefix {
   margin-right: 12rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 .pwd-field__inner {
   flex: 1;
@@ -382,7 +382,7 @@ function goBack() {
   height: 44rpx;
   padding: 0;
   font-size: 28rpx;
-  color: #1f2d3d;
+  color: var(--text-main);
   background: transparent;
   border: none;
   outline: none;
@@ -391,7 +391,7 @@ function goBack() {
 .pwd-field__inner :deep(input) {
   height: 44rpx;
   font-size: 28rpx;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 /* H5：用字符遮蔽代替原生密码框，避免浏览器叠加自带的眼睛图标 */
 .pwd-field__inner.is-masked,
@@ -400,7 +400,7 @@ function goBack() {
 }
 .pwd-field__suffix {
   margin-left: 16rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 /* ===== 渐变蓝大圆角按钮 ===== */

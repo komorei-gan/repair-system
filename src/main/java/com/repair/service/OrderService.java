@@ -2,6 +2,7 @@ package com.repair.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.repair.common.result.PageResult;
+import com.repair.dto.ApplyRequest;
 import com.repair.dto.AssignRequest;
 import com.repair.dto.AuditRequest;
 import com.repair.dto.CompleteRequest;
@@ -50,10 +51,10 @@ public interface OrderService {
     void accept(Long id);
 
     /** 师傅申请改派：ASSIGNED → REASSIGNING，通知管理员 */
-    void reassignRequest(Long id, ReasonRequest request);
+    void reassignRequest(Long id, ApplyRequest request);
 
     /** 师傅申请仲裁（恶意报修）：PROCESSING → ARBITRATING，通知管理员 */
-    void arbitrationRequest(Long id, ReasonRequest request);
+    void arbitrationRequest(Long id, ApplyRequest request);
 
     /** 师傅提交完成：PROCESSING → COMPLETED，通知报修人 */
     void complete(Long id, CompleteRequest request);
@@ -72,6 +73,9 @@ public interface OrderService {
 
     /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
     long pendingCount();
+
+    /** 待审批（REASSIGNING / ARBITRATING）工单数，供左侧仲裁中心角标展示 */
+    long auditingCount();
 
     /** 管理员派单：PENDING → ASSIGNED，通知师傅 */
     void assign(Long id, AssignRequest request);

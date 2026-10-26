@@ -20,9 +20,9 @@ public class FileController {
 
     private final FileService fileService;
 
-    /** 上传单张图片 → 返回完整可访问 URL（仅报修人可用） */
+    /** 上传单张图片 → 返回完整可访问 URL（报修人 / 师傅 / 管理员均可用） */
     @PostMapping("/upload")
-    @PreAuthorize("hasRole('REPORTER')")
+    @PreAuthorize("hasAnyRole('REPORTER', 'REPAIRER', 'ADMIN')")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
         return Result.success(fileService.upload(file));
     }

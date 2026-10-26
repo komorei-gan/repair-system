@@ -199,7 +199,7 @@ onReachBottom(() => {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 /* 导航栏右侧「个人中心」入口 */
@@ -234,14 +234,14 @@ onReachBottom(() => {
 
 .list-tip-text {
   font-size: 26rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 /* 工单卡片（与报修端 index.vue 卡片风格一致） */
 .order-card {
   margin-bottom: 12px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
@@ -265,19 +265,19 @@ onReachBottom(() => {
 .order-card__hash {
   margin-right: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__no {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__title {
   margin-bottom: 12px;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .order-card__meta {
@@ -291,13 +291,13 @@ onReachBottom(() => {
 
 .order-card__addr-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__addr {
   flex: 1;
   font-size: 13px;
-  color: #606266;
+  color: var(--text-sub);
   word-break: break-all;
 }
 
@@ -306,7 +306,7 @@ onReachBottom(() => {
   align-items: center;
   justify-content: space-between;
   padding-top: 10px;
-  border-top: 1px solid #f2f2f2;
+  border-top: 1px solid var(--line);
 }
 
 .order-card__reporter-wrap {
@@ -316,12 +316,12 @@ onReachBottom(() => {
 
 .order-card__reporter-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__reporter {
   font-size: 12px;
-  color: #606266;
+  color: var(--text-sub);
 }
 
 .order-card__time-wrap {
@@ -331,12 +331,12 @@ onReachBottom(() => {
 
 .order-card__time-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__time {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 /* 状态浅色胶囊标签 */
@@ -380,7 +380,7 @@ onReachBottom(() => {
 
 .tag-cancelled {
   background: #f5f5f5;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .tag-rejected {

@@ -348,7 +348,7 @@ onLoad(() => {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 .form-wrap {
@@ -359,7 +359,7 @@ onLoad(() => {
 .form-card,
 .upload-card {
   padding: 4px 20px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
@@ -369,7 +369,7 @@ onLoad(() => {
   display: flex;
   align-items: center;
   min-height: 52px;
-  border-bottom: 1px solid #f0f3f7;
+  border-bottom: 1px solid var(--line);
 }
 
 .form-row.no-border {
@@ -392,11 +392,11 @@ onLoad(() => {
 
 .form-value {
   font-size: 14px;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .form-value.is-placeholder {
-  color: #a8b0bd;
+  color: var(--text-placeholder);
 }
 
 /* 行内输入框：无背景无边框 */
@@ -409,7 +409,7 @@ onLoad(() => {
 .desc-block {
   margin-top: 12px;
   padding: 14px 16px;
-  background: #f5f7fa;
+  background: var(--bg-input);
   border-radius: 16px;
 }
 
@@ -423,12 +423,12 @@ onLoad(() => {
 .desc-label {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .desc-count {
   font-size: 12px;
-  color: #a8b0bd;
+  color: var(--text-muted);
 }
 
 .desc-textarea {
@@ -453,12 +453,12 @@ onLoad(() => {
 .upload-label {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .upload-tip {
   font-size: 12px;
-  color: #a8b0bd;
+  color: var(--text-muted);
 }
 
 .upload-grid {
@@ -498,8 +498,8 @@ onLoad(() => {
   width: 88px;
   height: 88px;
   border-radius: 10px;
-  border: 1px dashed #d3d9e3;
-  background: #fafbfd;
+  border: 1px dashed var(--line-strong);
+  background: var(--bg-input);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -509,7 +509,7 @@ onLoad(() => {
 
 .upload-add-text {
   font-size: 12px;
-  color: #a8b0bd;
+  color: var(--text-muted);
 }
 
 /* 通栏渐变提交按钮 */

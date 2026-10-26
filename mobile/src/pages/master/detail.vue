@@ -8,8 +8,8 @@
  */
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { useToast } from '@wot-ui/ui'
-import { orderDetail } from '@/api/order'
+import { useToast, useDialog } from '@wot-ui/ui'
+import { orderDetail, uploadImage } from '@/api/order'
 import { acceptOrder, completeOrder, reassignRequest, arbitrationRequest } from '@/api/repairer'
 import { getToken } from '@/utils/token'
 import { orderStatusLabel, orderStatusCls } from '@/utils/status'
@@ -17,6 +17,11 @@ import type { OrderDetailVO } from '@/types/api'
 
 // 用于表单校验的本地 toast（不随页面销毁，仅在校验分支内触发）
 const toast = useToast()
+/** 确认弹窗（wd-dialog，替换 uni.showModal，深色模式友好） */
+const dialog = useDialog()
+
+/** 申请证据图片上限 */
+const MAX_APPLY_IMAGES = 3
 
 const detail = ref<OrderDetailVO | null>(null)
 const loading = ref(true)
@@ -40,6 +45,9 @@ const applyVisible = ref(false)
 const applyType = ref<'REASSIGN' | 'ARBITRATE'>('REASSIGN')
 const applyReason = ref('')
 const applySubmitting = ref(false)
+/** 申请证据图片 URL 列表（选填，最多 3 张） */
+const applyImages = ref<string[]>([])
+const applyUploading = ref(false)
 
 /* ---------- 提交完工弹窗 ---------- */
 const completeVisible = ref(false)
@@ -81,7 +89,79 @@ function openApply(type: 'REASSIGN' | 'ARBITRATE') {
   completeVisible.value = false
   applyType.value = type
   applyReason.value = ''
+  applyImages.value = []
   applyVisible.value = true
+}
+
+/* ---------- 申请证据图片上传（复用报修页图片逻辑） ---------- */
+
+/** 前端压缩图片（质量 70%）；H5 等不支持 uni.compressImage 的环境直接返回原图 */
+function compressApplyImage(src: string): Promise<string> {
+  if (typeof uni.compressImage !== 'function') {
+    return Promise.resolve(src)
+  }
+  return new Promise((resolve) => {
+    uni.compressImage({
+      src,
+      quality: 70,
+      success: (res) => resolve(res.tempFilePath),
+      fail: (err) => {
+        console.error('图片压缩失败，回退使用原图', err)
+        resolve(src)
+      },
+    })
+  })
+}
+
+function chooseApplyImage() {
+  if (applyUploading.value) return
+  const remain = MAX_APPLY_IMAGES - applyImages.value.length
+  if (remain <= 0) {
+    toast.info(`最多上传 ${MAX_APPLY_IMAGES} 张图片`)
+    return
+  }
+  uni.chooseImage({
+    count: remain,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const paths = (res.tempFilePaths as string[]) ?? []
+      await handleApplyUpload(paths)
+    },
+  })
+}
+
+async function handleApplyUpload(paths: string[]) {
+  if (!paths.length) return
+  applyUploading.value = true
+  uni.showLoading({ title: '上传中...', mask: true })
+  try {
+    for (const src of paths) {
+      if (applyImages.value.length >= MAX_APPLY_IMAGES) break
+      try {
+        const compressed = await compressApplyImage(src)
+        const url = await uploadImage(compressed)
+        applyImages.value.push(url)
+      } catch (err) {
+        console.error('证据图片上传失败', err)
+        uni.showToast({ title: '图片上传失败，请重试', icon: 'none' })
+      }
+    }
+  } catch (err) {
+    console.error('证据图片处理失败', err)
+    uni.showToast({ title: '图片处理失败，请重试', icon: 'none' })
+  } finally {
+    uni.hideLoading()
+    applyUploading.value = false
+  }
+}
+
+function previewApplyImage(url: string) {
+  uni.previewImage({ urls: applyImages.value, current: url })
+}
+
+function removeApplyImage(index: number) {
+  applyImages.value.splice(index, 1)
 }
 
 /** 提交申请（改派 / 仲裁） */
@@ -91,15 +171,18 @@ async function submitApply() {
     toast.error('请填写申请理由')
     return
   }
+  const applyImagesJson = applyImages.value.length
+    ? JSON.stringify(applyImages.value)
+    : undefined
   applySubmitting.value = true
   try {
     if (applyType.value === 'REASSIGN') {
-      await reassignRequest(detail.value.id, applyReason.value.trim())
+      await reassignRequest(detail.value.id, applyReason.value.trim(), applyImagesJson)
       console.log('[repairer] 申请改派成功, orderId=', detail.value.id)
       // 用原生全局 toast，避免 navigateBack 卸载页面级 wd-toast 导致提示消失
       uni.showToast({ title: '申请改派已提交', icon: 'success' })
     } else {
-      await arbitrationRequest(detail.value.id, applyReason.value.trim())
+      await arbitrationRequest(detail.value.id, applyReason.value.trim(), applyImagesJson)
       console.log('[repairer] 申请仲裁成功, orderId=', detail.value.id)
       uni.showToast({ title: '申请驳回已提交', icon: 'success' })
     }
@@ -112,25 +195,29 @@ async function submitApply() {
   }
 }
 
-/** 接单：二次确认 */
-function handleAccept() {
+/** 接单：二次确认（wd-dialog，深色模式友好） */
+async function handleAccept() {
   if (!detail.value) return
-  uni.showModal({
-    title: '接单确认',
-    content: '确定接单并开始维修吗？',
-    confirmColor: '#1890ff',
-    success: async (res) => {
-      if (!res.confirm) return
-      try {
-        await acceptOrder(detail.value!.id)
-        console.log('[repairer] 接单成功, orderId=', detail.value!.id)
-        uni.showToast({ title: '接单成功', icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 600)
-      } catch (err) {
-        console.error('[repairer] 接单失败', err)
-      }
-    },
-  })
+  try {
+    const { action } = await dialog.confirm({
+      title: '接单确认',
+      msg: '确定接单并开始维修吗？',
+      confirmButtonText: '确认接单',
+      cancelButtonText: '取消',
+    })
+    if (action !== 'confirm') return
+  } catch {
+    return // 用户取消
+  }
+
+  try {
+    await acceptOrder(detail.value!.id)
+    console.log('[repairer] 接单成功, orderId=', detail.value!.id)
+    uni.showToast({ title: '接单成功', icon: 'success' })
+    setTimeout(() => uni.navigateBack(), 600)
+  } catch (err) {
+    console.error('[repairer] 接单失败', err)
+  }
 }
 
 /** 打开提交完工弹窗 */
@@ -377,6 +464,41 @@ onLoad((query) => {
           show-word-limit
           auto-height
         />
+
+        <!-- 申请证据图片（选填，最多 3 张） -->
+        <view class="apply-upload">
+          <view class="apply-upload__head">
+            <text class="apply-upload__label">证据图片</text>
+            <text class="apply-upload__tip">选填，最多 {{ MAX_APPLY_IMAGES }} 张</text>
+          </view>
+          <view class="apply-upload__grid">
+            <view
+              v-for="(img, idx) in applyImages"
+              :key="img"
+              class="apply-upload__item"
+            >
+              <image
+                :src="img"
+                mode="aspectFill"
+                class="apply-upload__img"
+                @click="previewApplyImage(img)"
+              />
+              <view class="apply-upload__remove" @click.stop="removeApplyImage(idx)">
+                <wd-icon name="close" :size="10" color="#ffffff" />
+              </view>
+            </view>
+            <view
+              v-if="applyImages.length < MAX_APPLY_IMAGES"
+              class="apply-upload__add"
+              @click="chooseApplyImage"
+            >
+              <wd-icon name="camera" :size="20" color="#a8b0bd" />
+              <text class="apply-upload__add-text">
+                {{ applyUploading ? '上传中...' : '添加图片' }}
+              </text>
+            </view>
+          </view>
+        </view>
       </view>
       <view class="popup-panel__footer">
         <wd-button block custom-class="popup-panel__cancel" @click="applyVisible = false">取消</wd-button>
@@ -427,13 +549,14 @@ onLoad((query) => {
     </wd-popup>
 
     <wd-toast />
+    <wd-dialog />
   </view>
 </template>
 
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 .body {
@@ -452,7 +575,7 @@ onLoad((query) => {
 
 .tip-text {
   font-size: 26rpx;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 /* 状态 Banner（大号浅色渐变） */
@@ -483,7 +606,7 @@ onLoad((query) => {
 .card {
   margin-bottom: 12px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
@@ -497,19 +620,19 @@ onLoad((query) => {
 .card__hash {
   margin-right: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .card__no {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .card__title {
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 /* 故障描述区块 */
@@ -519,19 +642,19 @@ onLoad((query) => {
   gap: 8px;
   margin-bottom: 16px;
   padding: 12px;
-  background: #f4f7f9;
+  background: var(--bg-input);
   border-radius: 8px;
 }
 
 .desc-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .desc-text {
   font-size: 14px;
   line-height: 1.6;
-  color: #3a4655;
+  color: var(--text-sub);
   word-break: break-all;
 }
 
@@ -547,19 +670,19 @@ onLoad((query) => {
   width: 120px;
   height: 120px;
   border-radius: 8px;
-  background: #f0f2f5;
+  background: var(--bg-input);
 }
 
 /* 键值对列表 */
 .kv-list {
-  border-top: 1px solid #f2f2f2;
+  border-top: 1px solid var(--line);
 }
 
 .kv-row {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--line);
 }
 
 .kv-row:last-child {
@@ -572,18 +695,18 @@ onLoad((query) => {
   width: 120px;
   flex-shrink: 0;
   font-size: 13px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .kv-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .kv-value {
   flex: 1;
   font-size: 13px;
-  color: #1f2d3d;
+  color: var(--text-main);
   word-break: break-all;
 }
 
@@ -596,7 +719,7 @@ onLoad((query) => {
   margin-bottom: 16px;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .empty-logs {
@@ -621,7 +744,7 @@ onLoad((query) => {
   height: 8px;
   margin-top: 6px;
   border-radius: 50%;
-  background: #c9d2de;
+  background: var(--text-muted);
 }
 
 .timeline-dot.is-first {
@@ -671,7 +794,7 @@ onLoad((query) => {
   width: 2rpx;
   min-height: 40rpx;
   margin-top: 6px;
-  background: #e6ebf2;
+  background: var(--line);
 }
 
 .timeline-content {
@@ -690,20 +813,20 @@ onLoad((query) => {
   margin-right: 12px;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
   word-break: break-all;
 }
 
 .timeline-time {
   flex-shrink: 0;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .timeline-sub {
   margin-top: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .timeline-role {
@@ -726,7 +849,7 @@ onLoad((query) => {
   padding: 12px 16px;
   padding-bottom: calc(12px + constant(safe-area-inset-bottom));
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  background: #ffffff;
+  background: var(--bg-card);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   z-index: 50;
 }
@@ -746,7 +869,7 @@ onLoad((query) => {
   flex: 1;
   border-radius: 22px !important;
   border: 1px solid #d6e4f5 !important;
-  background: #f5f9ff !important;
+  background: var(--bg-hover) !important;
   color: #1890ff !important;
 }
 
@@ -759,19 +882,93 @@ onLoad((query) => {
 /* ===== 底部弹层 ===== */
 .popup-panel {
   padding: 20px 16px 16px;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .popup-panel__title {
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
   text-align: center;
 }
 
 .popup-panel__body {
   margin-bottom: 16px;
+}
+
+/* ===== 申请证据图片上传 ===== */
+.apply-upload {
+  margin-top: 14px;
+}
+
+.apply-upload__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.apply-upload__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.apply-upload__tip {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.apply-upload__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.apply-upload__item {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.apply-upload__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+}
+
+.apply-upload__remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.55);
+  border-bottom-left-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apply-upload__add {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  border: 1px dashed var(--line-strong);
+  background: var(--bg-input);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.apply-upload__add-text {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .popup-panel__footer {

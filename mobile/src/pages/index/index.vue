@@ -367,7 +367,7 @@ onReachBottom(() => {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 /* 导航栏右侧「个人中心」入口 */
@@ -413,7 +413,7 @@ onReachBottom(() => {
   position: sticky;
   top: 0;
   z-index: 9;
-  background: #f4f7f9;
+  background: var(--bg-page);
   padding: 8px 16px;
 }
 
@@ -441,7 +441,7 @@ onReachBottom(() => {
 .filter-inner {
   display: flex;
   padding: 4px;
-  background: #e8eaed;
+  background: var(--bg-input);
   border-radius: 20px;
 }
 
@@ -450,7 +450,7 @@ onReachBottom(() => {
   margin-right: 4px;
   padding: 8px 20px;
   font-size: 13px;
-  color: #606266;
+  color: var(--text-sub);
   border-radius: 16px;
 }
 
@@ -460,7 +460,7 @@ onReachBottom(() => {
 
 .filter-item.is-active {
   color: #1890ff;
-  background: #ffffff;
+  background: var(--bg-card);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -478,14 +478,14 @@ onReachBottom(() => {
 
 .list-tip-text {
   font-size: 26rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 /* 工单卡片 */
 .order-card {
   margin-bottom: 12px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
@@ -509,19 +509,19 @@ onReachBottom(() => {
 .order-card__hash {
   margin-right: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__no {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__title {
   margin-bottom: 12px;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .order-card__meta {
@@ -534,18 +534,18 @@ onReachBottom(() => {
   display: flex;
   align-items: center;
   padding: 2px 8px;
-  background: #f0f2f5;
+  background: var(--bg-input);
   border-radius: 4px;
 }
 
 .order-card__cat-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__category {
   font-size: 12px;
-  color: #606266;
+  color: var(--text-sub);
 }
 
 .order-card__time-wrap {
@@ -555,12 +555,12 @@ onReachBottom(() => {
 
 .order-card__time-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .order-card__time {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 /* 卡片底部操作区 */
@@ -570,16 +570,16 @@ onReachBottom(() => {
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #f2f2f2;
+  border-top: 1px solid var(--line);
 }
 
 .order-card__action {
   padding: 6px 18px;
   font-size: 13px;
-  color: #606266;
-  border: 1px solid #dcdfe6;
+  color: var(--text-sub);
+  border: 1px solid var(--line-strong);
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .order-card__action--primary {
@@ -597,14 +597,14 @@ onReachBottom(() => {
 /* 底部弹层面板 */
 .popup-panel {
   padding: 20px 16px 16px;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .popup-panel__title {
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
   text-align: center;
 }
 
@@ -622,7 +622,7 @@ onReachBottom(() => {
 
 .rate-text {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .popup-panel__footer {
@@ -676,7 +676,7 @@ onReachBottom(() => {
 
 .tag-cancelled {
   background: #f5f5f5;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .tag-rejected {

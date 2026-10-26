@@ -8,13 +8,15 @@
  */
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { useToast } from '@wot-ui/ui'
+import { useToast, useDialog } from '@wot-ui/ui'
 import { changePassword } from '@/api/auth'
 import { repairerStats } from '@/api/repairer'
 import { clearToken, getCachedUser } from '@/utils/token'
+import { getTheme, setTheme } from '@/utils/theme'
 import type { UserInfo } from '@/types/api'
 
 const toast = useToast()
+const dialog = useDialog()
 
 /** 本地缓存的登录用户 */
 const user = ref<UserInfo | null>(getCachedUser<UserInfo>())
@@ -40,7 +42,14 @@ const showNewPwd = ref(false)
 const showConfirmPwd = ref(false)
 
 const inputStyle =
-  'background:transparent;border-radius:20rpx;padding:28rpx 24rpx;color:#1f2d3d;'
+  'background:transparent;border-radius:20rpx;padding:28rpx 24rpx;color:var(--text-main);'
+
+/** 深色模式开关 */
+const darkMode = ref(getTheme() === 'dark')
+
+function onDarkChange() {
+  setTheme(darkMode.value ? 'dark' : 'light')
+}
 
 /** 拉取师傅统计（失败静默，保留兜底展示） */
 async function fetchRepairerStats() {
@@ -109,18 +118,21 @@ async function submitChangePwd() {
   }
 }
 
-/** 退出登录 */
-function handleLogout() {
-  uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
-    confirmColor: '#f5222d',
-    success: (res) => {
-      if (!res.confirm) return
-      clearToken()
-      uni.reLaunch({ url: '/pages/login/login' })
-    },
-  })
+/** 退出登录（wd-dialog 二次确认，深色模式友好） */
+async function handleLogout() {
+  try {
+    const { action } = await dialog.confirm({
+      title: '提示',
+      msg: '确定要退出登录吗？',
+      confirmButtonText: '退出',
+      cancelButtonText: '取消',
+    })
+    if (action !== 'confirm') return
+  } catch {
+    return // 用户取消
+  }
+  clearToken()
+  uni.reLaunch({ url: '/pages/login/login' })
 }
 
 onLoad(() => {
@@ -180,6 +192,15 @@ onLoad(() => {
         </view>
       </template>
 
+      <!-- 深色模式开关 -->
+      <view class="menu-item">
+        <view class="menu-icon menu-icon--purple">
+          <wd-icon name="moon" size="18px" />
+        </view>
+        <text class="menu-label">深色模式</text>
+        <wd-switch v-model="darkMode" active-color="#1890ff" @change="onDarkChange" />
+      </view>
+
       <view class="menu-item no-border" hover-class="menu-item--active" @click="openChangePwd">
         <view class="menu-icon menu-icon--blue">
           <wd-icon name="lock" size="18px" />
@@ -217,7 +238,7 @@ onLoad(() => {
               :class="{ 'is-masked': oldPassword && !showOldPwd }"
               type="text"
               placeholder="请输入原密码"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="32"
             />
             <!-- #endif -->
@@ -227,7 +248,7 @@ onLoad(() => {
               class="pwd-field__inner"
               :password="oldPassword && !showOldPwd"
               placeholder="请输入原密码"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="32"
             />
             <!-- #endif -->
@@ -257,7 +278,7 @@ onLoad(() => {
               :class="{ 'is-masked': newPassword && !showNewPwd }"
               type="text"
               placeholder="请输入新密码（6-32 位）"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="32"
             />
             <!-- #endif -->
@@ -267,7 +288,7 @@ onLoad(() => {
               class="pwd-field__inner"
               :password="newPassword && !showNewPwd"
               placeholder="请输入新密码（6-32 位）"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="32"
             />
             <!-- #endif -->
@@ -297,7 +318,7 @@ onLoad(() => {
               :class="{ 'is-masked': confirmPassword && !showConfirmPwd }"
               type="text"
               placeholder="请再次输入新密码"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="32"
             />
             <!-- #endif -->
@@ -307,7 +328,7 @@ onLoad(() => {
               class="pwd-field__inner"
               :password="confirmPassword && !showConfirmPwd"
               placeholder="请再次输入新密码"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="32"
             />
             <!-- #endif -->
@@ -341,13 +362,14 @@ onLoad(() => {
     </wd-popup>
 
     <wd-toast />
+    <wd-dialog />
   </view>
 </template>
 
 <style lang="scss" scoped>
 .profile-page {
   min-height: 100vh;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 /* ===== 用户信息卡 ===== */
@@ -391,7 +413,7 @@ onLoad(() => {
 /* ===== 列表菜单 ===== */
 .menu-list {
   margin: 0 24rpx;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 24rpx;
   overflow: hidden;
 }
@@ -400,10 +422,10 @@ onLoad(() => {
   align-items: center;
   gap: 20rpx;
   padding: 30rpx 28rpx;
-  border-bottom: 1rpx solid #f0f3f7;
+  border-bottom: 1rpx solid var(--line);
 }
 .menu-item--active {
-  background: #f5f9ff;
+  background: var(--bg-hover);
 }
 .menu-item.no-border {
   border-bottom: 0;
@@ -429,11 +451,15 @@ onLoad(() => {
   background: #f6ffed;
   color: #52c41a;
 }
+.menu-icon--purple {
+  background: #f0f5ff;
+  color: #2f54eb;
+}
 .menu-label {
   flex: 1;
   font-size: 29rpx;
   font-weight: 500;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 .menu-value {
   font-size: 28rpx;
@@ -444,7 +470,7 @@ onLoad(() => {
   color: #52c41a;
 }
 .menu-arrow {
-  color: #c6ced8;
+  color: var(--text-muted);
 }
 
 /* ===== 退出登录 ===== */
@@ -455,7 +481,7 @@ onLoad(() => {
   border-radius: 999rpx !important;
   border: 1px solid #ffb3b8 !important;
   color: #f5222d !important;
-  background: #fff !important;
+  background: var(--bg-card) !important;
 }
 
 /* ===== 修改密码弹窗 ===== */
@@ -463,14 +489,14 @@ onLoad(() => {
   padding: 40rpx 40rpx 8rpx;
   font-size: 36rpx;
   font-weight: 700;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 .pwd-panel__body {
   padding: 16rpx 40rpx 8rpx;
 }
 .pwd-panel__body .field {
   margin-bottom: 24rpx;
-  background: #f5f7fa;
+  background: var(--bg-input);
   border-radius: 20rpx;
   box-shadow: 0 6rpx 18rpx -6rpx rgba(31, 45, 61, 0.08);
   overflow: hidden;
@@ -482,7 +508,7 @@ onLoad(() => {
 }
 .pwd-field__prefix {
   margin-right: 12rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 .pwd-field__inner {
   flex: 1;
@@ -490,7 +516,7 @@ onLoad(() => {
   height: 44rpx;
   padding: 0;
   font-size: 28rpx;
-  color: #1f2d3d;
+  color: var(--text-main);
   background: transparent;
   border: none;
   outline: none;
@@ -498,7 +524,7 @@ onLoad(() => {
 .pwd-field__inner :deep(input) {
   height: 44rpx;
   font-size: 28rpx;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 .pwd-field__inner.is-masked,
 .pwd-field__inner.is-masked :deep(input) {
@@ -506,7 +532,7 @@ onLoad(() => {
 }
 .pwd-field__suffix {
   margin-left: 16rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 .pwd-panel__footer {
   padding: 8rpx 40rpx 48rpx;

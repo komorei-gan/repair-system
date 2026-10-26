@@ -3,9 +3,9 @@ package com.repair.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.repair.common.result.PageResult;
 import com.repair.common.result.Result;
+import com.repair.dto.ApplyRequest;
 import com.repair.dto.CompleteRequest;
 import com.repair.dto.OrderVO;
-import com.repair.dto.ReasonRequest;
 import com.repair.dto.RepairerStatsVO;
 import com.repair.service.OrderService;
 import jakarta.validation.Valid;
@@ -47,18 +47,18 @@ public class RepairerOrderController {
         return Result.success();
     }
 
-    /** 申请改派（ASSIGNED → REASSIGNING，必填原因）→ 通知管理员 */
+    /** 申请改派（ASSIGNED → REASSIGNING，必填原因，证据图片选填）→ 通知管理员 */
     @PutMapping("/orders/{id}/reassign-request")
     @PreAuthorize("hasRole('REPAIRER')")
-    public Result<Void> reassignRequest(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
+    public Result<Void> reassignRequest(@PathVariable Long id, @Valid @RequestBody ApplyRequest request) {
         orderService.reassignRequest(id, request);
         return Result.success();
     }
 
-    /** 申请仲裁（PROCESSING → ARBITRATING，必填原因）→ 通知管理员 */
+    /** 申请仲裁（PROCESSING → ARBITRATING，必填原因，证据图片选填）→ 通知管理员 */
     @PutMapping("/orders/{id}/arbitration-request")
     @PreAuthorize("hasRole('REPAIRER')")
-    public Result<Void> arbitrationRequest(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
+    public Result<Void> arbitrationRequest(@PathVariable Long id, @Valid @RequestBody ApplyRequest request) {
         orderService.arbitrationRequest(id, request);
         return Result.success();
     }

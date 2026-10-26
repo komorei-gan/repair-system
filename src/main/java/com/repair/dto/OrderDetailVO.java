@@ -45,6 +45,12 @@ public class OrderDetailVO {
 
     private String repairerPhone;
 
+    /** 师傅申请理由（申请改派 / 申请仲裁） */
+    private String applyReason;
+
+    /** 师傅申请证据图片 URL 的 JSON 数组 */
+    private String applyImages;
+
     private LocalDateTime assignTime;
 
     private LocalDateTime acceptTime;
@@ -88,6 +94,8 @@ public class OrderDetailVO {
                 .repairerId(order.getRepairerId())
                 .repairerName(repairerName)
                 .repairerPhone(repairerPhone)
+                .applyReason(order.getApplyReason())
+                .applyImages(order.getApplyImages())
                 .assignTime(order.getAssignTime())
                 .acceptTime(order.getAcceptTime())
                 .finishTime(order.getFinishTime())

@@ -69,6 +69,10 @@ export interface OrderVO {
   status: OrderStatus
   repairerId: number | null
   repairerName: string | null
+  /** 师傅申请理由（申请改派 / 申请仲裁） */
+  applyReason?: string | null
+  /** 师傅申请证据图片 URL 的 JSON 数组 */
+  applyImages?: string | null
   assignTime: string | null
   acceptTime: string | null
   finishTime: string | null
@@ -87,6 +91,8 @@ export type OrderStatus =
   | 'CONFIRMED'
   | 'CANCELLED'
   | 'REJECTED'
+  | 'REASSIGNING'
+  | 'ARBITRATING'
 
 /** 通知视图 */
 export interface NotificationVO {
@@ -132,6 +138,10 @@ export interface OrderDetailVO {
   repairerId: number | null
   repairerName: string | null
   repairerPhone: string | null
+  /** 师傅申请理由（申请改派 / 申请仲裁） */
+  applyReason?: string | null
+  /** 师傅申请证据图片 URL 的 JSON 数组 */
+  applyImages?: string | null
   assignTime: string | null
   acceptTime: string | null
   finishTime: string | null

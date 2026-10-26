@@ -66,6 +66,9 @@ public class RepairOrder implements Serializable {
     /** 师傅申请理由（申请改派 / 申请仲裁） */
     private String applyReason;
 
+    /** 师傅申请证据图片 URL 的 JSON 数组（申请改派 / 申请仲裁，选填） */
+    private String applyImages;
+
     /** 取消原因 */
     private String cancelReason;
 

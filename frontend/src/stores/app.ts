@@ -7,7 +7,7 @@
  */
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { pendingCount as fetchOrderPendingCount } from '@/api/order'
+import { pendingCount as fetchOrderPendingCount, auditingCount as fetchAuditingCount } from '@/api/order'
 import { pendingRepairerAuditCount as fetchRepairerAuditPendingCount } from '@/api/repairerAudit'
 import { unreadCount as fetchUnreadCount } from '@/api/notification'
 
@@ -20,6 +20,8 @@ export const useAppStore = defineStore('app', () => {
   const dispatchPendingCount = ref(0)
   /** 待审核（auditStatus=0）师傅申请数，供「师傅审核」菜单角标展示 */
   const repairerAuditPendingCount = ref(0)
+  /** 待审批（REASSIGNING/ARBITRATING）工单数，供「仲裁中心」菜单角标展示 */
+  const arbitrationPendingCount = ref(0)
   /** 通知未读数，供左侧「通知中心」菜单与顶栏铃铛角标共同展示 */
   const unreadCount = ref(0)
   /**
@@ -55,6 +57,7 @@ export const useAppStore = defineStore('app', () => {
     notifOpen.value = false
     dispatchPendingCount.value = 0
     repairerAuditPendingCount.value = 0
+    arbitrationPendingCount.value = 0
     unreadCount.value = 0
     orderDetailRefreshToken.value = 0
   }
@@ -72,6 +75,15 @@ export const useAppStore = defineStore('app', () => {
   async function refreshRepairerAuditPendingCount(): Promise<void> {
     try {
       repairerAuditPendingCount.value = Number(await fetchRepairerAuditPendingCount())
+    } catch {
+      /* 后端未启动时静默 */
+    }
+  }
+
+  /** 拉取待审批工单数（失败静默保留上次值） */
+  async function refreshArbitrationPendingCount(): Promise<void> {
+    try {
+      arbitrationPendingCount.value = Number(await fetchAuditingCount())
     } catch {
       /* 后端未启动时静默 */
     }
@@ -95,6 +107,7 @@ export const useAppStore = defineStore('app', () => {
     await Promise.all([
       refreshDispatchPendingCount(),
       refreshRepairerAuditPendingCount(),
+      refreshArbitrationPendingCount(),
       refreshUnreadCount(),
     ])
   }
@@ -122,11 +135,17 @@ export const useAppStore = defineStore('app', () => {
     repairerAuditPendingCount.value = Math.max(0, repairerAuditPendingCount.value + delta)
   }
 
+  /** 待审批工单数增减（审批完成 -1），钳制在 [0, ∞) */
+  function adjustArbitrationPendingCount(delta: number): void {
+    arbitrationPendingCount.value = Math.max(0, arbitrationPendingCount.value + delta)
+  }
+
   return {
     sidebarOpen,
     notifOpen,
     dispatchPendingCount,
     repairerAuditPendingCount,
+    arbitrationPendingCount,
     unreadCount,
     orderDetailRefreshToken,
     toggleSidebar,
@@ -136,11 +155,13 @@ export const useAppStore = defineStore('app', () => {
     reset,
     refreshDispatchPendingCount,
     refreshRepairerAuditPendingCount,
+    refreshArbitrationPendingCount,
     refreshUnreadCount,
     refreshBadgeCounts,
     setUnreadCount,
     adjustUnreadCount,
     adjustDispatchPendingCount,
     adjustRepairerAuditPendingCount,
+    adjustArbitrationPendingCount,
   }
 })

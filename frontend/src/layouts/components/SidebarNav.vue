@@ -14,10 +14,11 @@ interface NavItem {
   /**
    * 红点角标对应的计数来源（无此字段则不显示红点）：
    * - dispatch      ：派单中心（存在待受理 PENDING 工单）
+   * - arbitration   ：仲裁中心（存在待审批 REASSIGNING/ARBITRATING 工单）
    * - repairerAudit ：师傅审核（存在待审核 auditStatus=0 申请）
    * - unread        ：通知中心（存在未读通知）
    */
-  countKey?: 'dispatch' | 'repairerAudit' | 'unread'
+  countKey?: 'dispatch' | 'arbitration' | 'repairerAudit' | 'unread'
 }
 
 interface NavGroup {
@@ -39,6 +40,7 @@ const groups: NavGroup[] = [
     items: [
       { name: 'orders', icon: 'i-clipboard' },
       { name: 'dispatch', icon: 'i-send', countKey: 'dispatch' },
+      { name: 'arbitration', icon: 'i-scale', countKey: 'arbitration' },
     ],
   },
   {
@@ -78,6 +80,7 @@ function isActive(name: string): boolean {
 /** 判断某菜单是否应显示红点（计数 > 0 即显示，不展示具体数字） */
 function hasDot(item: NavItem): boolean {
   if (item.countKey === 'dispatch') return appStore.dispatchPendingCount > 0
+  if (item.countKey === 'arbitration') return appStore.arbitrationPendingCount > 0
   if (item.countKey === 'repairerAudit') return appStore.repairerAuditPendingCount > 0
   if (item.countKey === 'unread') return appStore.unreadCount > 0
   return false

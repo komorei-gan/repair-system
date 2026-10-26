@@ -61,6 +61,11 @@ export default {
       <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
       <path d="M1 14h6M9 8h6M17 16h6" />
     </symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24">
+      <path d="M12 3v18M8 21h8M12 5l-7 5h14l-7-5z" />
+      <path d="M5 10l-3 7a3 3 0 0 0 6 0l-3-7z" />
+      <path d="M19 10l-3 7a3 3 0 0 0 6 0l-3-7z" />
+    </symbol>
     <symbol id="i-search" viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.3-4.3" />

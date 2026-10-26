@@ -10,6 +10,7 @@ import com.repair.common.exception.BusinessException;
 import com.repair.common.result.ErrorCode;
 import com.repair.common.result.PageResult;
 import com.repair.common.util.OrderNoUtil;
+import com.repair.dto.ApplyRequest;
 import com.repair.dto.AssignRequest;
 import com.repair.dto.AuditRequest;
 import com.repair.dto.CompleteRequest;
@@ -311,14 +312,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reassignRequest(Long id, ReasonRequest request) {
+    public void reassignRequest(Long id, ApplyRequest request) {
         LoginUser current = SecurityUtil.getCurrentUser();
         RepairOrder order = lockOrder(id);
         requireRepairerOfOrder(order, current);
         OrderStatus.requireTransition(order.getStatus(), OrderStatus.REASSIGNING);
 
         transition(order, OrderStatus.REASSIGNING,
-                new UpdateWrapper<RepairOrder>().set("apply_reason", request.getReason()));
+                new UpdateWrapper<RepairOrder>()
+                        .set("apply_reason", request.getReason())
+                        .set("apply_images", request.getApplyImages()));
         recordLog(order.getId(), current, "REASSIGN_REQUEST", OrderStatus.ASSIGNED, OrderStatus.REASSIGNING,
                 "师傅申请改派：" + request.getReason());
 
@@ -331,14 +334,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void arbitrationRequest(Long id, ReasonRequest request) {
+    public void arbitrationRequest(Long id, ApplyRequest request) {
         LoginUser current = SecurityUtil.getCurrentUser();
         RepairOrder order = lockOrder(id);
         requireRepairerOfOrder(order, current);
         OrderStatus.requireTransition(order.getStatus(), OrderStatus.ARBITRATING);
 
         transition(order, OrderStatus.ARBITRATING,
-                new UpdateWrapper<RepairOrder>().set("apply_reason", request.getReason()));
+                new UpdateWrapper<RepairOrder>()
+                        .set("apply_reason", request.getReason())
+                        .set("apply_images", request.getApplyImages()));
         recordLog(order.getId(), current, "ARBITRATE_REQUEST", OrderStatus.PROCESSING, OrderStatus.ARBITRATING,
                 "师傅申请仲裁（恶意报修）：" + request.getReason());
 
@@ -421,6 +426,12 @@ public class OrderServiceImpl implements OrderService {
     public long pendingCount() {
         return repairOrderMapper.selectCount(new LambdaQueryWrapper<RepairOrder>()
                 .eq(RepairOrder::getStatus, OrderStatus.PENDING));
+    }
+
+    @Override
+    public long auditingCount() {
+        return repairOrderMapper.selectCount(new LambdaQueryWrapper<RepairOrder>()
+                .in(RepairOrder::getStatus, OrderStatus.REASSIGNING, OrderStatus.ARBITRATING));
     }
 
     @Override

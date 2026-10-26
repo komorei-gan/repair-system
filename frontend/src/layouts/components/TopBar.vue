@@ -26,10 +26,12 @@ onMounted(() => {
   void appStore.refreshUnreadCount()
   void appStore.refreshDispatchPendingCount()
   void appStore.refreshRepairerAuditPendingCount()
+  void appStore.refreshArbitrationPendingCount()
   pollTimer = window.setInterval(() => {
     void appStore.refreshUnreadCount()
     void appStore.refreshDispatchPendingCount()
     void appStore.refreshRepairerAuditPendingCount()
+    void appStore.refreshArbitrationPendingCount()
   }, 30_000)
   document.addEventListener('click', onDocClick)
 })

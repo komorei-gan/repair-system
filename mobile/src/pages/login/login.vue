@@ -54,7 +54,7 @@ function clearPassword() {
 }
 
 const inputStyle =
-  'background:transparent;border-radius:20rpx;padding:28rpx 24rpx;color:#1f2d3d;'
+  'background:transparent;border-radius:20rpx;padding:28rpx 24rpx;color:var(--text-main);'
 
 async function handleLogin() {
   if (!username.value.trim()) {
@@ -215,7 +215,7 @@ async function submitReset() {
             :class="{ 'is-masked': password && !showPwd }"
             type="text"
             placeholder="请输入密码"
-            placeholder-style="color:#b0b8c4;font-size:28rpx;"
+            placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
             :maxlength="20"
             @confirm="handleLogin"
           />
@@ -226,7 +226,7 @@ async function submitReset() {
             class="pwd-field__inner"
             :password="password && !showPwd"
             placeholder="请输入密码"
-            placeholder-style="color:#b0b8c4;font-size:28rpx;"
+            placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
             :maxlength="20"
             @confirm="handleLogin"
           />
@@ -294,7 +294,7 @@ async function submitReset() {
               :class="{ 'is-masked': newPassword && !showNewPwd }"
               type="text"
               placeholder="请输入新密码（6-20 位）"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="20"
             />
             <!-- #endif -->
@@ -304,7 +304,7 @@ async function submitReset() {
               class="pwd-field__inner"
               :password="newPassword && !showNewPwd"
               placeholder="请输入新密码（6-20 位）"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="20"
             />
             <!-- #endif -->
@@ -333,7 +333,7 @@ async function submitReset() {
               :class="{ 'is-masked': confirmPassword && !showConfirmPwd }"
               type="text"
               placeholder="请再次输入新密码"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="20"
             />
             <!-- #endif -->
@@ -343,7 +343,7 @@ async function submitReset() {
               class="pwd-field__inner"
               :password="confirmPassword && !showConfirmPwd"
               placeholder="请再次输入新密码"
-              placeholder-style="color:#b0b8c4;font-size:28rpx;"
+              placeholder-style="color:var(--text-placeholder);font-size:28rpx;"
               :maxlength="20"
             />
             <!-- #endif -->
@@ -396,7 +396,7 @@ async function submitReset() {
 .login-page {
   min-height: 100vh;
   box-sizing: border-box;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 /* ===== 顶部渐变品牌区 ===== */
@@ -446,7 +446,7 @@ async function submitReset() {
 .login-card {
   margin: -96rpx 40rpx 0;
   padding: 56rpx 40rpx 48rpx;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 32rpx;
   box-shadow: 0 24rpx 60rpx -20rpx rgba(16, 62, 118, 0.24);
   position: relative;
@@ -455,13 +455,13 @@ async function submitReset() {
 .card-title {
   font-size: 40rpx;
   font-weight: 700;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 .card-subtitle {
   margin-top: 10rpx;
   margin-bottom: 40rpx;
   font-size: 26rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 /* ===== 角色切换 ===== */
@@ -478,13 +478,13 @@ async function submitReset() {
   gap: 10rpx;
   padding: 24rpx 12rpx;
   border-radius: 20rpx;
-  background: #f5f7fa;
+  background: var(--bg-input);
   border: 2rpx solid transparent;
-  color: #606266;
+  color: var(--text-sub);
   transition: all 0.2s;
 }
 .role-item__icon {
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 .role-item__text {
   font-size: 28rpx;
@@ -502,7 +502,7 @@ async function submitReset() {
 /* 输入框外层：悬浮阴影卡片态 */
 .field {
   margin-bottom: 28rpx;
-  background: #f5f7fa;
+  background: var(--bg-input);
   border-radius: 20rpx;
   box-shadow: 0 6rpx 18rpx -6rpx rgba(31, 45, 61, 0.08);
   overflow: hidden;
@@ -516,7 +516,7 @@ async function submitReset() {
 }
 .pwd-field__prefix {
   margin-right: 12rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 .pwd-field__inner {
   flex: 1;
@@ -524,7 +524,7 @@ async function submitReset() {
   height: 44rpx;
   padding: 0;
   font-size: 28rpx;
-  color: #1f2d3d;
+  color: var(--text-main);
   background: transparent;
   border: none;
   outline: none;
@@ -533,7 +533,7 @@ async function submitReset() {
 .pwd-field__inner :deep(input) {
   height: 44rpx;
   font-size: 28rpx;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 /* H5：用字符遮蔽代替原生密码框，避免浏览器叠加自带的眼睛图标 */
 .pwd-field__inner.is-masked,
@@ -542,7 +542,7 @@ async function submitReset() {
 }
 .pwd-field__suffix {
   margin-left: 16rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 /* ===== 渐变蓝大圆角按钮 ===== */
@@ -565,7 +565,7 @@ async function submitReset() {
 
 .login-footer__text {
   font-size: 26rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 .login-footer__link {
@@ -577,7 +577,7 @@ async function submitReset() {
 .login-footer__divider {
   margin: 0 12rpx;
   font-size: 26rpx;
-  color: #c6ced8;
+  color: var(--text-muted);
 }
 
 /* ===== 忘记密码弹窗 ===== */
@@ -585,7 +585,7 @@ async function submitReset() {
   padding: 40rpx 40rpx 8rpx;
   font-size: 36rpx;
   font-weight: 700;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 .forgot-panel__body {
   padding: 16rpx 40rpx 8rpx;
@@ -596,7 +596,7 @@ async function submitReset() {
 .forgot-tip {
   display: block;
   font-size: 24rpx;
-  color: #8a94a6;
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 8rpx;
 }
@@ -608,7 +608,7 @@ async function submitReset() {
 :deep(.forgot-panel__apply) {
   border-radius: 999rpx !important;
   border: 1px solid #d6e4f5 !important;
-  background: #f5f9ff !important;
+  background: var(--bg-hover) !important;
   color: #1890ff !important;
 }
 :deep(.forgot-panel__confirm) {

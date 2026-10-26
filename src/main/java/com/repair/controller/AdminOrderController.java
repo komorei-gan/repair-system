@@ -49,6 +49,13 @@ public class AdminOrderController {
         return Result.success(orderService.pendingCount());
     }
 
+    /** 待审批（REASSIGNING / ARBITRATING）工单数，供左侧仲裁中心角标展示 */
+    @GetMapping("/auditing-count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Long> auditingCount() {
+        return Result.success(orderService.auditingCount());
+    }
+
     /** 待审批工单列表（type 可选：REASSIGN / ARBITRATE / 空=全部） */
     @GetMapping("/auditing")
     @PreAuthorize("hasRole('ADMIN')")

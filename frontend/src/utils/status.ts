@@ -12,6 +12,8 @@ export const ORDER_STATUS_MAP: Record<OrderStatus, { label: string; cls: string 
   CONFIRMED: { label: '已确认', cls: 'pill confirmed' },
   CANCELLED: { label: '已取消', cls: 'pill cancelled' },
   REJECTED: { label: '已驳回', cls: 'pill rejected' },
+  REASSIGNING: { label: '申请改派中', cls: 'pill reassigning' },
+  ARBITRATING: { label: '仲裁中', cls: 'pill arbitrating' },
 }
 
 export function orderStatusLabel(status: OrderStatus): string {
@@ -31,6 +33,8 @@ export const STATUS_COLORS: Record<OrderStatus, string> = {
   CONFIRMED: '#52C41A',
   CANCELLED: '#C9D6E5',
   REJECTED: '#8C8C8C',
+  REASSIGNING: '#2F54EB',
+  ARBITRATING: '#FAAD14',
 }
 
 /** 通知类型映射 */

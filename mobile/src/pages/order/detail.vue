@@ -187,7 +187,7 @@ onLoad((query) => {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f4f7f9;
+  background: var(--bg-page);
 }
 
 .body {
@@ -204,7 +204,7 @@ onLoad((query) => {
 
 .tip-text {
   font-size: 26rpx;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 /* 状态 Banner（大号浅色渐变） */
@@ -235,7 +235,7 @@ onLoad((query) => {
 .card {
   margin-bottom: 12px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
@@ -249,19 +249,19 @@ onLoad((query) => {
 .card__hash {
   margin-right: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .card__no {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .card__title {
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 /* 故障描述区块 */
@@ -271,32 +271,32 @@ onLoad((query) => {
   gap: 8px;
   margin-bottom: 16px;
   padding: 12px;
-  background: #f4f7f9;
+  background: var(--bg-input);
   border-radius: 8px;
 }
 
 .desc-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .desc-text {
   font-size: 14px;
   line-height: 1.6;
-  color: #3a4655;
+  color: var(--text-sub);
   word-break: break-all;
 }
 
 /* 键值对列表 */
 .kv-list {
-  border-top: 1px solid #f2f2f2;
+  border-top: 1px solid var(--line);
 }
 
 .kv-row {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--line);
 }
 
 .kv-row:last-child {
@@ -309,18 +309,18 @@ onLoad((query) => {
   width: 96px;
   flex-shrink: 0;
   font-size: 13px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .kv-icon {
   margin-right: 4px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .kv-value {
   flex: 1;
   font-size: 13px;
-  color: #1f2d3d;
+  color: var(--text-main);
   word-break: break-all;
 }
 
@@ -328,7 +328,7 @@ onLoad((query) => {
   margin-bottom: 16px;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
 }
 
 .empty-logs {
@@ -353,7 +353,7 @@ onLoad((query) => {
   height: 8px;
   margin-top: 6px;
   border-radius: 50%;
-  background: #c9d2de;
+  background: var(--text-muted);
 }
 
 .timeline-dot.is-first {
@@ -394,7 +394,7 @@ onLoad((query) => {
   width: 2rpx;
   min-height: 40rpx;
   margin-top: 6px;
-  background: #e6ebf2;
+  background: var(--line);
 }
 
 .timeline-content {
@@ -413,20 +413,20 @@ onLoad((query) => {
   margin-right: 12px;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--text-main);
   word-break: break-all;
 }
 
 .timeline-time {
   flex-shrink: 0;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .timeline-sub {
   margin-top: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .timeline-role {
@@ -449,7 +449,17 @@ onLoad((query) => {
   color: #2f54eb;
 }
 
+.tag-reassigning {
+  background: linear-gradient(135deg, #f0f5ff, #d6e4ff);
+  color: #2f54eb;
+}
+
 .tag-processing {
+  background: linear-gradient(135deg, #fff7e6, #ffe7ba);
+  color: #fa8c16;
+}
+
+.tag-arbitrating {
   background: linear-gradient(135deg, #fff7e6, #ffe7ba);
   color: #fa8c16;
 }
@@ -462,7 +472,7 @@ onLoad((query) => {
 
 .tag-cancelled {
   background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .tag-rejected {

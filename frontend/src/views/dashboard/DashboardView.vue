@@ -1304,6 +1304,22 @@ tr:hover .order-title {
 .pill.rejected .dot {
   background: #ff4d4f;
 }
+.pill.reassigning {
+  background: #f0f5ff;
+  color: #2f54eb;
+}
+.pill.reassigning .dot {
+  background: #2f54eb;
+  box-shadow: 0 0 0 2.5px rgba(47, 84, 235, 0.14);
+}
+.pill.arbitrating {
+  background: #fff7e6;
+  color: #b26b00;
+}
+.pill.arbitrating .dot {
+  background: #faad14;
+  box-shadow: 0 0 0 2.5px rgba(250, 173, 20, 0.16);
+}
 
 .time-cell {
   white-space: nowrap;

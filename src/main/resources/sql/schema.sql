@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS `repair_order` (
     `confirm_time`   DATETIME               DEFAULT NULL   COMMENT '确认时间',
     `reject_reason`  VARCHAR(200)           DEFAULT NULL   COMMENT '驳回/拒单原因',
     `apply_reason`   VARCHAR(200)           DEFAULT NULL   COMMENT '师傅申请理由（申请改派/申请仲裁）',
+    `apply_images`   VARCHAR(1000)          DEFAULT NULL   COMMENT '申请证据图片 URL 的 JSON 数组',
     `cancel_reason`  VARCHAR(200)           DEFAULT NULL   COMMENT '取消原因',
     `repair_result`  VARCHAR(500)           DEFAULT NULL   COMMENT '维修结果描述',
     `rating`         DECIMAL(2,1)           DEFAULT NULL   COMMENT '报修人评分（1~5）',

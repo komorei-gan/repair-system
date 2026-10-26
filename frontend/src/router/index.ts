@@ -42,6 +42,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '派单中心', icon: 'i-send' },
       },
       {
+        path: 'arbitration',
+        name: 'arbitration',
+        component: () => import('@/views/arbitration/ArbitrationView.vue'),
+        meta: { title: '仲裁中心', icon: 'i-scale' },
+      },
+      {
         path: 'repairers',
         name: 'repairers',
         component: () => import('@/views/repairer/RepairerView.vue'),
