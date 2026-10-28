@@ -403,13 +403,16 @@ public class OrderServiceImpl implements OrderService {
         boolean hasKeyword = StringUtils.hasText(keyword);
         List<Long> reporterIds = hasKeyword ? userMapper.selectReporterIdsByKeyword(keyword.trim()) : null;
 
-        // 状态过滤：忽略 null、空白与哨兵值 "ALL"（前端「全部」Tab 可能误传），
-        // 未选状态或选「全部」时不加状态条件，避免 status='ALL' 查出空结果。
+        // 状态过滤：忽略 null、空白与哨兵值 "ALL"（前端「全部」Tab 可能误传）。
+        // 支持逗号分隔多状态（如 PENDING,REASSIGNING,ARBITRATING），底层生成 status IN (...)。
         String status = query.getStatus();
-        boolean hasStatus = status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim());
+        List<String> statuses = status == null || status.isBlank() || "ALL".equalsIgnoreCase(status.trim())
+                ? null
+                : OrderStatus.parseCsv(status);
+        boolean hasStatus = statuses != null && !statuses.isEmpty();
 
         LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
-                .eq(hasStatus, RepairOrder::getStatus, hasStatus ? status.trim() : null)
+                .in(hasStatus, RepairOrder::getStatus, statuses)
                 .eq(query.getCategoryId() != null, RepairOrder::getCategoryId, query.getCategoryId())
                 .ge(query.getStartTime() != null, RepairOrder::getCreatedAt, query.getStartTime())
                 .le(query.getEndTime() != null, RepairOrder::getCreatedAt, query.getEndTime())
@@ -667,9 +670,11 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteByAdmin(Long id) {
         RepairOrder order = lockOrder(id);
-        // 仅「待受理」或「已取消」可删除；已派单、维修中、已完成等流转中状态一律拒绝
+        // 仅「待派单（PENDING）」「已驳回（REJECTED）」「已取消（CANCELLED）」可删除；
+        // 已派单、维修中、已完成等流转中状态一律拒绝
         if (!OrderStatus.PENDING.equals(order.getStatus())
-                && !OrderStatus.CANCELLED.equals(order.getStatus())) {
+                && !OrderStatus.CANCELLED.equals(order.getStatus())
+                && !OrderStatus.REJECTED.equals(order.getStatus())) {
             throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "流转中的工单无法删除，请先取消或驳回");
         }
         // 逻辑删除：RepairOrder 上的 @TableLogic 注解会让 deleteById 执行 UPDATE deleted=1，不物理删除

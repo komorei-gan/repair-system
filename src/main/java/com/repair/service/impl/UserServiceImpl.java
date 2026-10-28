@@ -91,6 +91,10 @@ public class UserServiceImpl implements UserService {
                         .or()
                         .like(User::getUsername, keyword))
                 .eq(role != null && RoleEnum.isValid(role), User::getRole, role)
+                // 数据泄露修复：被拒绝的师傅账号只允许出现在师傅审核「已拒绝」列表，
+                // 用户管理列表必须排除「师傅 + 已拒绝」这类账号
+                .not(w -> w.eq(User::getRole, RoleEnum.REPAIRER)
+                        .eq(User::getAuditStatus, AuditStatus.REJECTED))
                 .orderByDesc(User::getId);
         Page<User> result = userMapper.selectPage(page, wrapper);
         return PageResult.from(result.convert(UserInfoVO::from));

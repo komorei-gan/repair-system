@@ -75,6 +75,13 @@ async function loadCategories(): Promise<void> {
   }
 }
 
+/** 「待受理」Tab 合并查询 PENDING / REASSIGNING / ARBITRATING 三种状态 */
+function resolveStatusParam(): string | undefined {
+  if (activeTab.value === 'ALL') return undefined
+  if (activeTab.value === 'PENDING') return 'PENDING,REASSIGNING,ARBITRATING'
+  return activeTab.value
+}
+
 /** 拉取工单分页数据 */
 async function loadOrders(): Promise<void> {
   loading.value = true
@@ -82,7 +89,7 @@ async function loadOrders(): Promise<void> {
     const res = await orderApi.adminOrders({
       pageNum: pageNum.value,
       pageSize: pageSize.value,
-      status: activeTab.value === 'ALL' ? undefined : activeTab.value,
+      status: resolveStatusParam(),
       categoryId: categoryId.value,
       keyword: keyword.value.trim() || undefined,
     })
@@ -152,6 +159,15 @@ function statusTagStyle(status: OrderStatus): Record<string, string> {
   }
 }
 
+/**
+ * 列表状态列文案：PENDING 在本页展示为「待派单」（区别于顶部「待受理」Tab）。
+ * 其余状态沿用全局映射。
+ */
+function rowStatusLabel(status: OrderStatus): string {
+  if (status === 'PENDING') return '待派单'
+  return orderStatusLabel(status)
+}
+
 /* ---------- 详情跳转：把当前 status 通过 query 带过去，并带上来源页 ---------- */
 function goDetail(row: OrderVO): void {
   void router.push({
@@ -182,6 +198,34 @@ function onAssignSuccess(): void {
   void loadOrders()
 }
 
+/* ---------- 审批（改派 / 仲裁）：同意与拒绝 ---------- */
+async function onAudit(row: OrderVO, type: 'REASSIGN' | 'ARBITRATE', approve: boolean): Promise<void> {
+  const actionText = approve ? '同意' : '拒绝'
+  try {
+    await ElMessageBox.confirm(
+      `确定要${actionText}该${type === 'REASSIGN' ? '改派' : '仲裁'}申请吗？`,
+      `${actionText}确认`,
+      { confirmButtonText: actionText, cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  try {
+    await orderApi.auditOrder(row.id, { approve, type })
+    ElMessage.success(`${actionText}成功`)
+    // 审批完成，待审批角标 -1
+    appStore.adjustArbitrationPendingCount(-1)
+    // 同意改派会回到 PENDING（待派单），派单中心角标 +1
+    if (type === 'REASSIGN' && approve) {
+      appStore.adjustDispatchPendingCount(1)
+    }
+    await loadOrders()
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+  }
+}
+
 /* ---------- 删除 ---------- */
 async function onDelete(row: OrderVO): Promise<void> {
   try {
@@ -197,7 +241,7 @@ async function onDelete(row: OrderVO): Promise<void> {
   try {
     await orderApi.deleteOrder(row.id)
     ElMessage.success('工单已删除')
-    // 删除的 PENDING 工单才影响待派单数（CANCELLED 删除不计数）
+    // 仅删除 PENDING 工单影响待派单角标（REJECTED / CANCELLED 删除不计数）
     if (row.status === 'PENDING') {
       appStore.adjustDispatchPendingCount(-1)
     }
@@ -304,7 +348,7 @@ watch(
         <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <el-tag :style="statusTagStyle(row.status)" size="small" effect="plain">
-              {{ orderStatusLabel(row.status) }}
+              {{ rowStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -321,19 +365,50 @@ watch(
               派单
             </el-button>
             <el-button
-              v-if="
-                (row as OrderVO).status === 'ASSIGNED' ||
-                (row as OrderVO).status === 'PROCESSING'
-              "
+              v-if="(row as OrderVO).status === 'ASSIGNED'"
               link
               type="primary"
               @click="openReassign(row as OrderVO)"
             >
               改派
             </el-button>
+            <!-- 申请改派中：同意 / 拒绝 -->
+            <template v-if="(row as OrderVO).status === 'REASSIGNING'">
+              <el-button
+                link
+                type="primary"
+                @click="onAudit(row as OrderVO, 'REASSIGN', true)"
+              >
+                同意
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                @click="onAudit(row as OrderVO, 'REASSIGN', false)"
+              >
+                拒绝
+              </el-button>
+            </template>
+            <!-- 仲裁中：同意 / 拒绝 -->
+            <template v-if="(row as OrderVO).status === 'ARBITRATING'">
+              <el-button
+                link
+                type="primary"
+                @click="onAudit(row as OrderVO, 'ARBITRATE', true)"
+              >
+                同意
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                @click="onAudit(row as OrderVO, 'ARBITRATE', false)"
+              >
+                拒绝
+              </el-button>
+            </template>
             <el-button
               v-if="
-                (row as OrderVO).status === 'PENDING' ||
+                (row as OrderVO).status === 'REJECTED' ||
                 (row as OrderVO).status === 'CANCELLED'
               "
               link

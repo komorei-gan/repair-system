@@ -4,6 +4,7 @@ import com.repair.entity.User;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -32,6 +33,9 @@ public class UserInfoVO {
     /** 信誉分 */
     private Integer creditScore;
 
+    /** 师傅平均评分（仅 REPAIRER 使用） */
+    private BigDecimal rating;
+
     private String avatar;
 
     private LocalDateTime createdAt;
@@ -46,6 +50,7 @@ public class UserInfoVO {
                 .status(user.getStatus())
                 .resetApproved(user.getResetApproved())
                 .creditScore(user.getCreditScore())
+                .rating(user.getRating())
                 .avatar(user.getAvatar())
                 .createdAt(user.getCreatedAt())
                 .build();

@@ -10,17 +10,17 @@ import type { UserInfo } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
 /* ---------- 角色筛选 ---------- */
-type RoleFilter = 'ALL' | 'ADMIN' | 'REPAIRER' | 'REPORTER'
+type RoleFilter = '' | 'ADMIN' | 'REPAIRER' | 'REPORTER'
 const ROLE_OPTIONS: { label: string; value: RoleFilter }[] = [
-  { label: '全部', value: 'ALL' },
+  { label: '全部', value: '' },
   { label: '管理员', value: 'ADMIN' },
-  { label: '师傅', value: 'REPAIRER' },
+  { label: '维修师傅', value: 'REPAIRER' },
   { label: '报修人', value: 'REPORTER' },
 ]
 
 /* ---------- 筛选与分页状态 ---------- */
 const keyword = ref('')
-const role = ref<RoleFilter>('ALL')
+const role = ref<RoleFilter>('')
 const pageNum = ref(1)
 const pageSize = ref(10)
 
@@ -41,7 +41,7 @@ async function loadUsers(): Promise<void> {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
       keyword: keyword.value.trim() || undefined,
-      role: role.value === 'ALL' ? undefined : role.value,
+      role: role.value || undefined,
     })
     users.value = res.records ?? []
     total.value = Number(res.total ?? 0)
@@ -62,7 +62,7 @@ function onSearch(): void {
 
 function onReset(): void {
   keyword.value = ''
-  role.value = 'ALL'
+  role.value = ''
   pageNum.value = 1
   void loadUsers()
 }
@@ -93,10 +93,18 @@ function roleTagType(role: string): 'danger' | 'primary' | 'success' {
 function roleLabel(role: string): string {
   const map: Record<string, string> = {
     ADMIN: '管理员',
-    REPAIRER: '师傅',
+    REPAIRER: '维修师傅',
     REPORTER: '报修人',
   }
   return map[role] ?? role
+}
+
+/* ---------- 评价/信誉列 ---------- */
+/** 师傅评分展示文案：有评分显示「⭐ 4.3」，未评分显示 "-" */
+function ratingText(row: UserInfo): string {
+  const r = row.rating
+  if (r === null || r === undefined || Number.isNaN(Number(r))) return '-'
+  return `⭐ ${Number(r).toFixed(1)}`
 }
 
 /* ---------- 启用/禁用 ---------- */
@@ -225,34 +233,52 @@ onMounted(() => {
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="评价/信誉" width="120" align="center">
+          <template #default="{ row }">
+            <!-- 师傅：显示平均评分（橙色） -->
+            <el-tag v-if="row.role === 'REPAIRER'" type="warning" size="small">
+              {{ ratingText(row) }}
+            </el-tag>
+            <!-- 报修人：显示信誉分（蓝色） -->
+            <el-tag v-else-if="row.role === 'REPORTER'" type="primary" size="small">
+              信誉 {{ row.creditScore ?? '-' }}
+            </el-tag>
+            <!-- 管理员：占位 -->
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="创建时间" width="175" align="center">
           <template #default="{ row }">{{ row.createdAt || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button
-              link
-              :type="row.status === 1 ? 'danger' : 'success'"
-              :loading="togglingId === row.id"
-              @click="onToggleStatus(row as UserInfo)"
-            >
-              {{ row.status === 1 ? '禁用' : '启用' }}
-            </el-button>
-            <el-button
-              link
-              type="primary"
-              :disabled="(row as UserInfo).resetApproved !== 1"
-              :loading="approvingId === row.id"
-              @click="onApproveReset(row as UserInfo)"
-            >
-              {{
-                (row as UserInfo).resetApproved === 1
-                  ? '批准重置'
-                  : (row as UserInfo).resetApproved === 2
-                    ? '已批准'
-                    : '未申请'
-              }}
-            </el-button>
+            <!-- 管理员不能自我禁用，直接隐藏启用/禁用与批准重置按钮 -->
+            <template v-if="row.role !== 'ADMIN'">
+              <el-button
+                link
+                :type="row.status === 1 ? 'danger' : 'success'"
+                :loading="togglingId === row.id"
+                @click="onToggleStatus(row as UserInfo)"
+              >
+                {{ row.status === 1 ? '禁用' : '启用' }}
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                :disabled="(row as UserInfo).resetApproved !== 1"
+                :loading="approvingId === row.id"
+                @click="onApproveReset(row as UserInfo)"
+              >
+                {{
+                  (row as UserInfo).resetApproved === 1
+                    ? '批准重置'
+                    : (row as UserInfo).resetApproved === 2
+                      ? '已批准'
+                      : '未申请'
+                }}
+              </el-button>
+            </template>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <template #empty>

@@ -32,6 +32,10 @@ export interface UserInfo {
   resetApproved?: number
   /** 创建时间（管理端用户列表展示） */
   createdAt?: string
+  /** 信誉分（报修人，管理端「评价/信誉」列展示） */
+  creditScore?: number
+  /** 师傅平均评分（REPAIRER，管理端「评价/信誉」列展示） */
+  rating?: number | null
 }
 
 /** 审核状态：0 待审核 / 1 已通过 / 2 已拒绝 */

@@ -182,6 +182,10 @@ onMounted(() => {
         :header-cell-style="{ background: 'var(--th-bg)', color: 'var(--muted)', fontWeight: 600 }"
       >
         <el-table-column prop="orderNo" label="工单号" min-width="170" align="center" />
+        <!-- 故障标题：直接取后端返回的 title -->
+        <el-table-column label="故障标题" min-width="180" align="center">
+          <template #default="{ row }">{{ row.title || '-' }}</template>
+        </el-table-column>
         <el-table-column label="师傅姓名" min-width="110" align="center">
           <template #default="{ row }">{{ row.repairerName || '-' }}</template>
         </el-table-column>
