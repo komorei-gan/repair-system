@@ -366,12 +366,17 @@ public class OrderServiceImpl implements OrderService {
         requireRepairerOfOrder(order, current);
         OrderStatus.requireTransition(order.getStatus(), OrderStatus.COMPLETED);
 
+        // 维修结果描述为选填，未填写时存默认文案，避免日志与详情出现空值
+        String repairResult = request.getRepairResult() == null || request.getRepairResult().isBlank()
+                ? "已维修完成"
+                : request.getRepairResult().trim();
+
         transition(order, OrderStatus.COMPLETED,
                 new UpdateWrapper<RepairOrder>()
-                        .set("repair_result", request.getRepairResult())
+                        .set("repair_result", repairResult)
                         .set("finish_time", LocalDateTime.now()));
         recordLog(order.getId(), current, "FINISH", OrderStatus.PROCESSING, OrderStatus.COMPLETED,
-                "维修完成：" + request.getRepairResult());
+                "维修完成：" + repairResult);
 
         notifyService.notify(order.getReporterId(), NotificationType.ORDER,
                 "维修已完成，待确认",
@@ -529,7 +534,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getId());
             notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
                     "改派已通过，待重新派单",
-                    "《" + order.getTitle() + "》的改派申请已通过（单号：" + order.getOrderNo() + "），请重新派单。",
+                    "您已通过改派申请，请重新指派维修师傅。",
                     order.getId());
         } else {
             OrderStatus.requireTransition(order.getStatus(), OrderStatus.ASSIGNED);

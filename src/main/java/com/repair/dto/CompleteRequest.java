@@ -1,6 +1,5 @@
 package com.repair.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -10,8 +9,7 @@ import lombok.Data;
 @Data
 public class CompleteRequest {
 
-    /** 维修结果描述 */
-    @NotBlank(message = "维修结果不能为空")
+    /** 维修结果描述（选填，最多 500 字） */
     @Size(max = 500, message = "维修结果不能超过 500 字")
     private String repairResult;
 }

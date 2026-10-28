@@ -2,13 +2,15 @@
 /**
  * 顶栏 —— 面包屑、搜索、帮助、铃铛（30s 轮询未读数）、用户信息、登出。
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
+import type { NotificationVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 import NotificationPanel from './NotificationPanel.vue'
+import NotificationDetailDialog from '@/components/NotificationDetailDialog.vue'
 import HelpDialog from '@/components/HelpDialog.vue'
 
 const route = useRoute()
@@ -19,6 +21,20 @@ const authStore = useAuthStore()
 let pollTimer: number | undefined
 /** 帮助中心弹窗显隐 */
 const helpVisible = ref(false)
+/** 通知详情弹窗：显隐 + 当前展示的通知 */
+const detailVisible = ref(false)
+const activeNotif = ref<NotificationVO | null>(null)
+
+/** 打开通知详情弹窗（铃铛面板点击后调用） */
+function onOpenDetail(n: NotificationVO): void {
+  activeNotif.value = n
+  detailVisible.value = true
+}
+
+/** 弹窗关闭后刷新一次未读角标 */
+watch(detailVisible, (v) => {
+  if (!v) void appStore.refreshUnreadCount()
+})
 
 const pageTitle = computed(() => String(route.meta.title ?? ''))
 
@@ -143,6 +159,7 @@ async function onLogout(): Promise<void> {
           id="notif-panel"
           @read-all="appStore.refreshUnreadCount"
           @view-all="onViewAllNotices"
+          @open-detail="onOpenDetail"
         />
       </div>
 
@@ -168,6 +185,9 @@ async function onLogout(): Promise<void> {
 
     <!-- 全局帮助中心弹窗 -->
     <HelpDialog v-model="helpVisible" />
+
+    <!-- 通知详情弹窗 -->
+    <NotificationDetailDialog v-model="detailVisible" :notification="activeNotif" />
   </header>
 </template>
 

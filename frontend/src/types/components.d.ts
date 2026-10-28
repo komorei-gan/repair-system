@@ -41,6 +41,7 @@ declare module 'vue' {
     HelpDialog: typeof import('./../components/HelpDialog.vue')['default']
     IconSprite: typeof import('./../components/IconSprite.vue')['default']
     IconSvg: typeof import('./../components/IconSvg.vue')['default']
+    NotificationDetailDialog: typeof import('./../components/NotificationDetailDialog.vue')['default']
     PagePlaceholder: typeof import('./../components/PagePlaceholder.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

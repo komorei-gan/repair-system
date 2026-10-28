@@ -228,16 +228,14 @@ function openComplete() {
   completeVisible.value = true
 }
 
-/** 提交完工 */
+/** 提交完工（维修结果描述为选填，未填写时使用默认文案） */
 async function submitComplete() {
   if (!detail.value) return
-  if (!repairResult.value.trim()) {
-    toast.error('请填写维修结果')
-    return
-  }
+  // 选填：不填描述时传默认值，避免后端记录为空
+  const result = repairResult.value.trim() || '已维修完成'
   completeSubmitting.value = true
   try {
-    await completeOrder(detail.value.id, repairResult.value.trim())
+    await completeOrder(detail.value.id, result)
     console.log('[repairer] 提交完工成功, orderId=', detail.value.id)
     uni.showToast({ title: '已提交完工', icon: 'success' })
     completeVisible.value = false
@@ -528,7 +526,7 @@ onLoad((query) => {
       <view class="popup-panel__body">
         <wd-textarea
           v-model="repairResult"
-          placeholder="请填写维修结果描述"
+          placeholder="请填写维修结果描述（选填）"
           :maxlength="500"
           show-word-limit
           auto-height

@@ -162,9 +162,18 @@ public class AuthServiceImpl implements AuthService {
         List<Long> adminIds = userService.listEnabledByRole(RoleEnum.ADMIN).stream()
                 .map(User::getId)
                 .toList();
+        // 按角色区分通知文案，便于管理员快速识别申请来源
+        String roleText;
+        if (RoleEnum.REPAIRER.equals(user.getRole())) {
+            roleText = "维修师傅";
+        } else if (RoleEnum.REPORTER.equals(user.getRole())) {
+            roleText = "报修人";
+        } else {
+            roleText = "用户";
+        }
         notifyService.notifyUsers(adminIds, NotificationType.SYSTEM,
                 "密码重置申请",
-                "用户【" + user.getUsername() + "】申请重置密码，请前往用户管理处理。",
+                roleText + "【" + user.getUsername() + "】申请重置密码，请前往用户管理处理。",
                 null);
     }
 

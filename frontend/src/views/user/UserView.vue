@@ -3,9 +3,10 @@
  * 用户管理 —— 三端用户（管理员/师傅/报修人）分页查询与启用/禁用。
  * 保持与工单列表一致的 Element Plus UI 风格（白色卡片、大圆角、清晰表格）。
  */
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pageUsers, updateUserStatus, approveReset } from '@/api/user'
+import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { UserInfo } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
@@ -22,7 +23,10 @@ const ROLE_OPTIONS: { label: string; value: RoleFilter }[] = [
 const keyword = ref('')
 const role = ref<RoleFilter>('')
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.users))
+
+// 切换每页条数时持久化，下次进入恢复
+watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.users, v))
 
 /* ---------- 表格数据 ---------- */
 const loading = ref(false)
@@ -237,7 +241,7 @@ onMounted(() => {
           <template #default="{ row }">
             <!-- 师傅：显示平均评分（橙色） -->
             <el-tag v-if="row.role === 'REPAIRER'" type="warning" size="small">
-              {{ ratingText(row) }}
+              {{ ratingText(row as UserInfo) }}
             </el-tag>
             <!-- 报修人：显示信誉分（蓝色） -->
             <el-tag v-else-if="row.role === 'REPORTER'" type="primary" size="small">

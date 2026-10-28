@@ -11,6 +11,7 @@ import * as orderApi from '@/api/order'
 import * as categoryApi from '@/api/category'
 import { useAppStore } from '@/stores/app'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
+import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { Category, OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 import AssignDialog from '@/components/AssignDialog.vue'
@@ -54,7 +55,10 @@ const categories = ref<Category[]>([])
 
 /* ---------- 分页状态 ---------- */
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.orders))
+
+// 切换每页条数时持久化，下次进入恢复
+watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.orders, v))
 
 /* ---------- 表格数据 ---------- */
 const loading = ref(false)

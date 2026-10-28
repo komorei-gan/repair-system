@@ -1,27 +1,28 @@
 <script setup lang="ts">
 /**
- * 派单中心 —— 只处理「待受理（PENDING）」工单的集中派单。
+ * 派单中心 —— 只处理「待派单（PENDING）」工单的集中派单。
  * 复用 OrderListView 的表格与分页逻辑，去掉搜索框与状态 Tabs：
- * 查询时固定传 status: 'PENDING'，操作列保留「详情」「派单」与「删除」。
+ * 查询时固定传 status: 'PENDING'，操作列保留「详情」与「派单」。
  * 详情跳转带 from 来源，返回时回到本页。
  */
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import * as orderApi from '@/api/order'
-import { useAppStore } from '@/stores/app'
 import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
+import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 import AssignDialog from '@/components/AssignDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
-const appStore = useAppStore()
 
 /* ---------- 分页状态 ---------- */
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.dispatch))
+
+// 切换每页条数时持久化，下次进入恢复
+watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.dispatch, v))
 
 /* ---------- 表格数据 ---------- */
 const loading = ref(false)
@@ -32,7 +33,7 @@ const total = ref(0)
 const assignDialogVisible = ref(false)
 const assignTarget = ref<OrderVO | null>(null)
 
-/** 拉取待受理工单（固定 PENDING，不提供状态切换） */
+/** 拉取待派单工单（固定 PENDING，不提供状态切换） */
 async function loadOrders(): Promise<void> {
   loading.value = true
   try {
@@ -74,6 +75,12 @@ function statusTagStyle(status: OrderStatus): Record<string, string> {
   }
 }
 
+/** 派单中心状态文案：PENDING 在派单场景下显示为「待派单」 */
+function dispatchStatusLabel(status: OrderStatus): string {
+  if (status === 'PENDING') return '待派单'
+  return orderStatusLabel(status)
+}
+
 /* ---------- 派单 ---------- */
 function openAssign(row: OrderVO): void {
   assignTarget.value = row
@@ -83,29 +90,6 @@ function openAssign(row: OrderVO): void {
 /** 派单成功后刷新列表（弹窗内部已提示成功） */
 function onAssignSuccess(): void {
   void loadOrders()
-}
-
-/* ---------- 删除 ---------- */
-async function onDelete(row: OrderVO): Promise<void> {
-  try {
-    await ElMessageBox.confirm(
-      '确定要删除该工单吗？删除后不可恢复',
-      '删除确认',
-      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
-    )
-  } catch {
-    return // 用户取消
-  }
-
-  try {
-    await orderApi.deleteOrder(row.id)
-    ElMessage.success('工单已删除')
-    // 删除的必为 PENDING 工单，待派单数 -1，同步左侧菜单红点
-    appStore.adjustDispatchPendingCount(-1)
-    await loadOrders()
-  } catch {
-    // 错误提示已由 axios 拦截器统一处理
-  }
 }
 
 /* ---------- 详情跳转：带 from 来源，返回时回到派单中心 ---------- */
@@ -127,7 +111,7 @@ onMounted(() => {
     <div class="page-head">
       <div>
         <h1>派单中心</h1>
-        <p class="page-sub">仅展示待受理工单，集中派单给维修师傅</p>
+        <p class="page-sub">仅展示待派单工单，集中派单给维修师傅</p>
       </div>
     </div>
 
@@ -144,7 +128,7 @@ onMounted(() => {
     </section>
 
     <!-- ============ 表格区 ============ -->
-    <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="待受理工单表格">
+    <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="待派单工单表格">
       <el-table
         v-loading="loading"
         :data="orders"
@@ -167,7 +151,7 @@ onMounted(() => {
         <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <el-tag :style="statusTagStyle(row.status)" size="small" effect="plain">
-              {{ orderStatusLabel(row.status) }}
+              {{ dispatchStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -176,21 +160,10 @@ onMounted(() => {
           <template #default="{ row }">
             <el-button link type="primary" @click="goDetail(row as OrderVO)">详情</el-button>
             <el-button link type="primary" @click="openAssign(row as OrderVO)">派单</el-button>
-            <el-button
-              v-if="
-                (row as OrderVO).status === 'PENDING' ||
-                (row as OrderVO).status === 'CANCELLED'
-              "
-              link
-              type="danger"
-              @click="onDelete(row as OrderVO)"
-            >
-              删除
-            </el-button>
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无待受理工单" />
+          <el-empty description="暂无待派单工单" />
         </template>
       </el-table>
 

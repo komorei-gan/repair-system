@@ -9,6 +9,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { auditingOrders, auditOrder } from '@/api/order'
 import { useAppStore } from '@/stores/app'
+import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { OrderVO } from '@/types/api'
 
 /* ---------- 审批类型（Tab 对应后端 type 参数） ---------- */
@@ -30,7 +31,10 @@ function resolveTab(value: unknown): AuditType {
 /* ---------- 筛选与分页状态 ---------- */
 const activeTab = ref<AuditType>(resolveTab(route.query.tab))
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.arbitration))
+
+// 切换每页条数时持久化，下次进入恢复
+watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.arbitration, v))
 
 /* ---------- 表格数据 ---------- */
 const loading = ref(false)
@@ -44,7 +48,7 @@ function parseApplyImages(raw?: string | null): string[] {
   if (!raw) return []
   try {
     const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string' && v) : []
+    return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string' && v !== '') : []
   } catch {
     return []
   }

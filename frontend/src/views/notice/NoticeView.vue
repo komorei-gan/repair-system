@@ -3,26 +3,28 @@
  * 通知中心 —— 全部通知的分页卡片列表。
  * - 顶部操作栏：右侧「全部标记已读」（PUT /api/notifications/read-all）
  * - 主体：卡片列表（GET /api/notifications 分页）
- * - 点击单条：标记已读（PUT /api/notifications/{id}/read），有 orderId 则跳转工单详情（带 from 来源）
+ * - 点击单条：标记已读（PUT /api/notifications/{id}/read），打开 NotificationDetailDialog 详情弹窗
  * - 已读卡片提供「标记未读」（PUT /api/notifications/{id}/unread）
  * - 所有读/未读操作同步更新 Pinia 未读数，顶栏铃铛角标无感刷新
  */
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as notifApi from '@/api/notification'
 import { useAppStore } from '@/stores/app'
 import { NOTIFICATION_TYPE_META } from '@/utils/status'
+import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { NotificationVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
+import NotificationDetailDialog from '@/components/NotificationDetailDialog.vue'
 
-const route = useRoute()
-const router = useRouter()
 const appStore = useAppStore()
 
 /* ---------- 分页状态 ---------- */
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.notice))
+
+// 切换每页条数时持久化，下次进入恢复
+watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.notice, v))
 
 /* ---------- 列表数据 ---------- */
 const loading = ref(false)
@@ -30,6 +32,14 @@ const list = ref<NotificationVO[]>([])
 const total = ref(0)
 /** 「全部标记已读」提交中状态（防重复点击） */
 const markingAll = ref(false)
+/** 通知详情弹窗：显隐 + 当前展示的通知 */
+const detailVisible = ref(false)
+const activeNotif = ref<NotificationVO | null>(null)
+
+/** 弹窗关闭后刷新一次未读角标 */
+watch(detailVisible, (v) => {
+  if (!v) void appStore.refreshUnreadCount()
+})
 
 /** 拉取通知分页数据 */
 async function loadNotifications(): Promise<void> {
@@ -77,7 +87,7 @@ async function onMarkAll(): Promise<void> {
   }
 }
 
-/* ---------- 点击单条通知：标记已读 + 跳转详情 ---------- */
+/* ---------- 点击单条通知：标记已读 + 打开详情弹窗 ---------- */
 async function onReadOne(item: NotificationVO): Promise<void> {
   if (item.isRead === 0) {
     // 乐观更新：先本地置为已读，接口失败再回滚
@@ -87,17 +97,11 @@ async function onReadOne(item: NotificationVO): Promise<void> {
       appStore.adjustUnreadCount(-1)
     } catch {
       item.isRead = 0 // 失败回滚，保持未读状态
-      return // 标记失败不跳转，避免用户漏读
+      return // 标记失败不打开弹窗，避免用户漏读
     }
   }
-  if (item.orderId !== null) {
-    void router.push({
-      path: `/orders/${item.orderId}`,
-      query: { from: route.path },
-    }).catch(() => {
-      /* 忽略重复导航 / 导航被中止的 rejection */
-    })
-  }
+  activeNotif.value = item
+  detailVisible.value = true
 }
 
 /* ---------- 标记未读 ---------- */
@@ -135,7 +139,7 @@ onMounted(() => {
     <div class="page-head">
       <div>
         <h1>通知中心</h1>
-        <p class="page-sub">共 <b>{{ total }}</b> 条通知 · 点击工单通知可跳转详情</p>
+        <p class="page-sub">共 <b>{{ total }}</b> 条通知 · 点击通知查看详情</p>
       </div>
       <el-button
         type="primary"
@@ -175,7 +179,7 @@ onMounted(() => {
           <time class="notice-time">{{ timeAgo(n.createdAt) }}</time>
         </div>
 
-        <!-- 已读卡片：标记未读（阻止冒泡，避免触发卡片的已读+跳转） -->
+        <!-- 已读卡片：标记未读（阻止冒泡，避免触发卡片的已读+打开弹窗） -->
         <button
           v-if="n.isRead === 1"
           type="button"
@@ -208,6 +212,9 @@ onMounted(() => {
         @size-change="onSizeChange"
       />
     </div>
+
+    <!-- 通知详情弹窗 -->
+    <NotificationDetailDialog v-model="detailVisible" :notification="activeNotif" />
   </div>
 </template>
 

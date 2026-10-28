@@ -9,6 +9,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pageRepairerAudit, updateRepairerAudit } from '@/api/repairerAudit'
 import { useAppStore } from '@/stores/app'
+import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { AuditStatus, RepairerAuditVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
@@ -35,7 +36,10 @@ function resolveTab(value: unknown): AuditStatus {
 const keyword = ref('')
 const activeTab = ref<AuditStatus>(resolveTab(route.query.tab))
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.repairerAudit))
+
+// 切换每页条数时持久化，下次进入恢复
+watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.repairerAudit, v))
 
 /* ---------- 表格数据 ---------- */
 const loading = ref(false)
