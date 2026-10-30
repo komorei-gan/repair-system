@@ -10,6 +10,9 @@ import com.repair.dto.OrderVO;
 import com.repair.dto.ReasonRequest;
 import com.repair.dto.ReassignRequest;
 import com.repair.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,9 +25,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 /**
  * 管理端工单接口（design.md §3.4）。
  */
+@Tag(name = "管理端工单模块")
 @RestController
 @RequestMapping("/api/admin/orders")
 @RequiredArgsConstructor
@@ -40,6 +49,22 @@ public class AdminOrderController {
             @RequestParam(defaultValue = "10") long pageSize,
             OrderQuery query) {
         return Result.success(orderService.adminOrders(new Page<>(pageNum, pageSize), query));
+    }
+
+    /** 工单导出（复用分页接口同套筛选条件，输出 xlsx 文件流） */
+    @Operation(summary = "导出工单 Excel")
+    @GetMapping("/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    public void export(HttpServletResponse response, OrderQuery query) {
+        // 文件名含中文：filename* 走 RFC 5987（现代浏览器），filename 走 URL 编码（老浏览器兜底）
+        String fileName = "工单数据_" + DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+                .format(LocalDateTime.now()) + ".xlsx";
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + encoded + "\"; filename*=UTF-8''" + encoded);
+        orderService.exportOrders(response, query);
     }
 
     /** 待受理（PENDING）工单数，供左侧菜单角标展示 */
@@ -75,6 +100,7 @@ public class AdminOrderController {
     }
 
     /** 派单（PENDING → ASSIGNED，指定师傅）→ 通知师傅 */
+    @Operation(summary = "派单")
     @PutMapping("/{id}/assign")
     @PreAuthorize("hasRole('ADMIN')")
     public Result<Void> assign(@PathVariable Long id, @Valid @RequestBody AssignRequest request) {

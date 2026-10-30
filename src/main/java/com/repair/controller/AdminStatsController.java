@@ -7,6 +7,7 @@ import com.repair.dto.RepairerLeaderboardVO;
 import com.repair.entity.User;
 import com.repair.service.DashboardService;
 import com.repair.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
@@ -22,6 +23,7 @@ import java.util.List;
 /**
  * 管理端数据统计接口（design.md §3.4）。
  */
+@Tag(name = "管理端统计模块")
 @RestController
 @RequestMapping("/api/admin/stats")
 @RequiredArgsConstructor

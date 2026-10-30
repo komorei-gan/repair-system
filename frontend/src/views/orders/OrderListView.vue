@@ -141,6 +141,35 @@ function onReset(): void {
   void loadOrders()
 }
 
+/* ---------- 导出：按当前筛选条件导出全部工单 ---------- */
+const exporting = ref(false)
+
+async function onExport(): Promise<void> {
+  try {
+    await ElMessageBox.confirm('确定导出当前筛选结果吗？', '导出确认', {
+      confirmButtonText: '导出',
+      cancelButtonText: '取消',
+      type: 'info',
+    })
+  } catch {
+    return // 用户取消
+  }
+
+  exporting.value = true
+  try {
+    await orderApi.exportOrders({
+      status: resolveStatusParam(),
+      categoryId: categoryId.value,
+      keyword: keyword.value.trim() || undefined,
+    })
+    ElMessage.success('导出成功')
+  } catch {
+    // 错误提示已由下载工具 / 拦截器统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 /* ---------- 分页 ---------- */
 function onPageChange(p: number): void {
   pageNum.value = p
@@ -283,6 +312,10 @@ watch(
         <h1>工单列表</h1>
         <p class="page-sub">共 <b>{{ total }}</b> 条工单 · 支持按状态、分类、关键字筛选</p>
       </div>
+      <el-button type="primary" :loading="exporting" @click="onExport">
+        <IconSvg name="i-download" :size="15" />
+        &nbsp;导出数据
+      </el-button>
     </div>
 
     <!-- ============ 筛选区 ============ -->

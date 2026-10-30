@@ -8,6 +8,8 @@ import com.repair.dto.CompleteRequest;
 import com.repair.dto.OrderVO;
 import com.repair.dto.RepairerStatsVO;
 import com.repair.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 维修端接口（design.md §3.3）。
  */
+@Tag(name = "维修端工单模块")
 @RestController
 @RequestMapping("/api/repairer")
 @RequiredArgsConstructor
@@ -40,6 +43,7 @@ public class RepairerOrderController {
     }
 
     /** 接单（ASSIGNED → PROCESSING）→ 通知报修人 */
+    @Operation(summary = "接单")
     @PutMapping("/orders/{id}/accept")
     @PreAuthorize("hasRole('REPAIRER')")
     public Result<Void> accept(@PathVariable Long id) {

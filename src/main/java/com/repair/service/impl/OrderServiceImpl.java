@@ -1,5 +1,7 @@
 package com.repair.service.impl;
 
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -17,6 +19,7 @@ import com.repair.dto.CompleteRequest;
 import com.repair.dto.ConfirmRequest;
 import com.repair.dto.CreateOrderRequest;
 import com.repair.dto.OrderDetailVO;
+import com.repair.dto.OrderExportDTO;
 import com.repair.dto.OrderQuery;
 import com.repair.dto.OrderVO;
 import com.repair.dto.ReassignRequest;
@@ -35,13 +38,16 @@ import com.repair.security.SecurityUtil;
 import com.repair.service.CategoryService;
 import com.repair.service.NotifyService;
 import com.repair.service.OrderService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,6 +77,10 @@ public class OrderServiceImpl implements OrderService {
     private final CategoryService categoryService;
 
     private final NotifyService notifyService;
+
+    /** 导出创建时间格式（与 JacksonConfig 的 yyyy-MM-dd HH:mm:ss 保持一致） */
+    private static final DateTimeFormatter EXPORT_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ==================== 报修端 ====================
 
@@ -402,6 +412,30 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResult<OrderVO> adminOrders(Page<?> page, OrderQuery query) {
+        LambdaQueryWrapper<RepairOrder> wrapper = buildAdminQueryWrapper(query);
+        Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
+        return PageResult.from(result.convert(this::toVO));
+    }
+
+    @Override
+    public void exportOrders(HttpServletResponse response, OrderQuery query) {
+        List<RepairOrder> orders = repairOrderMapper.selectList(buildAdminQueryWrapper(query));
+        List<OrderExportDTO> exportList = orders.stream().map(this::toExportDTO).toList();
+        try {
+            EasyExcel.write(response.getOutputStream(), OrderExportDTO.class)
+                    .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
+                    .sheet("工单数据")
+                    .doWrite(exportList);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SERVER_ERROR, "工单导出失败");
+        }
+    }
+
+    /**
+     * 构建管理员工单查询条件（关键字/状态/分类/时间）。
+     * adminOrders 与 exportOrders 共用，避免两处筛选逻辑漂移。
+     */
+    private LambdaQueryWrapper<RepairOrder> buildAdminQueryWrapper(OrderQuery query) {
         String keyword = query.getKeyword();
         // 按报修人姓名/账号匹配：先查报修人主键，再 in 过滤（避免 SQL 拼接注入）。
         // 无匹配报修人时使用空集合，保证 keyword 仅命中报修人字段时结果为空，而非回退全量。
@@ -416,7 +450,7 @@ public class OrderServiceImpl implements OrderService {
                 : OrderStatus.parseCsv(status);
         boolean hasStatus = statuses != null && !statuses.isEmpty();
 
-        LambdaQueryWrapper<RepairOrder> wrapper = new LambdaQueryWrapper<RepairOrder>()
+        return new LambdaQueryWrapper<RepairOrder>()
                 .in(hasStatus, RepairOrder::getStatus, statuses)
                 .eq(query.getCategoryId() != null, RepairOrder::getCategoryId, query.getCategoryId())
                 .ge(query.getStartTime() != null, RepairOrder::getCreatedAt, query.getStartTime())
@@ -430,8 +464,6 @@ public class OrderServiceImpl implements OrderService {
                     }
                 })
                 .orderByDesc(RepairOrder::getCreatedAt);
-        Page<RepairOrder> result = repairOrderMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
-        return PageResult.from(result.convert(this::toVO));
     }
 
     @Override
@@ -841,5 +873,21 @@ public class OrderServiceImpl implements OrderService {
                 users.get(order.getReporterId()),
                 categoryName(order.getCategoryId()),
                 users.get(order.getRepairerId()));
+    }
+
+    /** 单个工单转导出 DTO（状态中文映射 + 创建时间格式化；维修师傅为空则导出空单元格） */
+    private OrderExportDTO toExportDTO(RepairOrder order) {
+        Map<Long, String> users = userNames(Stream.of(order.getReporterId(), order.getRepairerId())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()));
+        OrderExportDTO dto = new OrderExportDTO();
+        dto.setOrderNo(order.getOrderNo());
+        dto.setTitle(order.getTitle());
+        dto.setCategoryName(categoryName(order.getCategoryId()));
+        dto.setReporterName(users.get(order.getReporterId()));
+        dto.setRepairerName(order.getRepairerId() == null ? null : users.get(order.getRepairerId()));
+        dto.setStatus(OrderStatus.toLabel(order.getStatus()));
+        dto.setCreatedAt(order.getCreatedAt() == null ? null : order.getCreatedAt().format(EXPORT_TIME_FORMATTER));
+        return dto;
     }
 }

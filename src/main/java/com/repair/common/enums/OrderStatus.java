@@ -64,7 +64,27 @@ public final class OrderStatus {
             REJECTED, Set.of()
     );
 
+    /** 状态码 → 中文名（与前端 utils/status.ts 的 ORDER_STATUS_MAP 完全一致） */
+    private static final Map<String, String> STATUS_LABELS = Map.of(
+            PENDING, "待受理",
+            ASSIGNED, "已派单",
+            PROCESSING, "维修中",
+            COMPLETED, "已完成",
+            CONFIRMED, "已确认",
+            CANCELLED, "已取消",
+            REJECTED, "已驳回",
+            REASSIGNING, "申请改派中",
+            ARBITRATING, "仲裁中"
+    );
+
     private OrderStatus() {
+    }
+
+    /**
+     * 状态码转中文名，未知状态码回退返回原码（导出/展示兜底，不抛异常）。
+     */
+    public static String toLabel(String status) {
+        return STATUS_LABELS.getOrDefault(status, status);
     }
 
     /**

@@ -50,6 +50,20 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
+        <!-- 阿里 EasyExcel：管理端工单/报表导出 -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>3.3.4</version>
+        </dependency>
+
+        <!-- Knife4j 在线接口文档（Spring Boot 3 / JDK 17 专用 starter，自带 springdoc） -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <version>4.5.0</version>
+        </dependency>
+
         <!-- MySQL 驱动（版本由 Spring Boot parent 管理） -->
         <dependency>
             <groupId>com.mysql</groupId>

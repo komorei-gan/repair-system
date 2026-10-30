@@ -9,6 +9,8 @@ import com.repair.dto.RegisterRequest;
 import com.repair.dto.ResetPasswordRequest;
 import com.repair.dto.UserInfoVO;
 import com.repair.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 认证接口（design.md §3.1，三端共用）。
  * Controller 只做参数接收与结果返回，业务逻辑全部在 Service 层（AGENTS.md 代码规范）。
  */
+@Tag(name = "认证模块")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class AuthController {
     private final AuthService authService;
 
     /** 登录（三端同接口，返回 token + 角色） */
+    @Operation(summary = "登录")
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.login(request));

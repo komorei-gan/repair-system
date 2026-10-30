@@ -6,6 +6,7 @@ import com.repair.common.result.Result;
 import com.repair.dto.NotificationVO;
 import com.repair.dto.UnreadCountVO;
 import com.repair.service.NotificationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 通知接口（design.md §3.5，三端通用）。
  * 所有接口只操作当前登录用户的通知（userId 从 SecurityContext 取，不接受客户端传入）。
  */
+@Tag(name = "通知模块")
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor

@@ -7,6 +7,7 @@ import com.repair.dto.RepairerAuditVO;
 import com.repair.dto.UpdateAuditStatusRequest;
 import com.repair.entity.User;
 import com.repair.service.RepairerAuditService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * - GET /api/admin/repairers/audit?auditStatus=&keyword=&pageNum=&pageSize= ：师傅审核分页查询
  * - PUT /api/admin/repairers/audit/{id}                         ：通过/拒绝师傅
  */
+@Tag(name = "师傅审核模块")
 @RestController
 @RequestMapping("/api/admin/repairers/audit")
 @RequiredArgsConstructor

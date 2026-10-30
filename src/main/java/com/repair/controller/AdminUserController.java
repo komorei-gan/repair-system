@@ -6,6 +6,7 @@ import com.repair.common.result.Result;
 import com.repair.dto.UpdateStatusRequest;
 import com.repair.dto.UserInfoVO;
 import com.repair.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import java.util.List;
  * - GET /api/admin/users?pageNum=&pageSize=&keyword=&role= ：用户管理分页查询（含关键字/角色筛选）
  * - PUT /api/admin/users/{id}/status          ：启用/禁用用户
  */
+@Tag(name = "管理端用户模块")
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor

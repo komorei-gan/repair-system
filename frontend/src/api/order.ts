@@ -2,6 +2,7 @@
  * 管理端工单接口（design.md §3.4）。
  */
 import { http } from './request'
+import { downloadExcel } from '@/utils/download'
 import type { OrderDetailVO, OrderVO, PageResult } from '@/types/api'
 
 /** 工单分页查询参数（对应后端 OrderQuery） */
@@ -18,6 +19,11 @@ export interface OrderQueryParams {
 /** 工单分页查询（状态/分类/时间/关键字） */
 export function adminOrders(params: OrderQueryParams): Promise<PageResult<OrderVO>> {
   return http.get<PageResult<OrderVO>>('/api/admin/orders', { ...params })
+}
+
+/** 工单导出（按筛选条件导出全量 Excel；文件名由工具生成） */
+export function exportOrders(params: OrderQueryParams = {}): Promise<void> {
+  return downloadExcel('/api/admin/orders/export', params, '工单数据')
 }
 
 /** 工单详情（含操作日志；管理员可访问） */

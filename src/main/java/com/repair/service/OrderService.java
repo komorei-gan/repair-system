@@ -15,6 +15,7 @@ import com.repair.dto.ReassignRequest;
 import com.repair.dto.ReasonRequest;
 import com.repair.dto.RepairerStatsVO;
 import com.repair.dto.UpdateOrderRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 工单核心业务（design.md §1 完整状态机，§1.3 全部 11 种操作）。
@@ -64,6 +65,9 @@ public interface OrderService {
 
     /** 管理员工单分页（状态/分类/时间/关键字） */
     PageResult<OrderVO> adminOrders(Page<?> page, OrderQuery query);
+
+    /** 管理员工单导出（复用 adminOrders 同套筛选条件，导出全量 Excel） */
+    void exportOrders(HttpServletResponse response, OrderQuery query);
 
     /** 待审批工单分页（type 可选：REASSIGN / ARBITRATE / 空=全部） */
     PageResult<OrderVO> auditingOrders(Page<?> page, String type);

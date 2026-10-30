@@ -55,6 +55,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/api/auth/register",
                                 "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        // Knife4j / OpenAPI 文档与静态资源放行
+                        .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**",
+                                "/swagger-ui/**", "/swagger-ui.html", "/favicon.ico").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception

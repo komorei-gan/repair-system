@@ -2,6 +2,7 @@ package com.repair.controller;
 
 import com.repair.common.result.Result;
 import com.repair.service.FileService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 图片上传接口。Controller 只做参数接收与结果返回，业务在 FileService。
  */
+@Tag(name = "文件模块")
 @RestController
 @RequestMapping("/api/files")
 @RequiredArgsConstructor

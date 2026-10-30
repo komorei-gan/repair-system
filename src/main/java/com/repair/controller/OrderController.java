@@ -9,6 +9,7 @@ import com.repair.dto.OrderVO;
 import com.repair.dto.ReasonRequest;
 import com.repair.dto.UpdateOrderRequest;
 import com.repair.service.OrderService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 报修端工单接口（design.md §3.2）。
  * Controller 只做参数接收与结果返回，业务与状态流转全部在 Service 层。
  */
+@Tag(name = "报修端工单模块")
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor

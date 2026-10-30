@@ -4,6 +4,7 @@ import com.repair.common.result.Result;
 import com.repair.dto.CategoryRequest;
 import com.repair.entity.Category;
 import com.repair.service.CategoryService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import java.util.List;
  * - PUT    /api/admin/categories/{id}   ：编辑分类
  * - DELETE /api/admin/categories/{id}   ：删除分类（存在未完成工单则拒绝）
  */
+@Tag(name = "管理端分类模块")
 @RestController
 @RequestMapping("/api/admin/categories")
 @RequiredArgsConstructor

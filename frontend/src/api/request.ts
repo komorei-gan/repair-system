@@ -47,7 +47,10 @@ instance.interceptors.response.use(
       }
       return Promise.reject(new Error(result.msg || '未登录'))
     }
-    ElMessage.error(result.msg || '请求失败')
+    // 调用方自行处理错误提示（如导出下载需要解析 Blob 后输出精确文案）
+    if (!response.config.suppressErrorToast) {
+      ElMessage.error(result.msg || '请求失败')
+    }
     return Promise.reject(new Error(result.msg || '请求失败'))
   },
   (error) => {
@@ -59,6 +62,8 @@ instance.interceptors.response.use(
         const redirect = encodeURIComponent(window.location.pathname + window.location.search)
         window.location.href = `/login?redirect=${redirect}`
       }
+    } else if (error?.config?.suppressErrorToast) {
+      // 交给调用方统一提示，避免与下载工具重复弹窗
     } else if (status) {
       const msg = error?.response?.data?.msg ?? error?.message ?? '网络请求失败'
       ElMessage.error(msg)

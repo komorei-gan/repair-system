@@ -11,7 +11,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDashboardStats } from '@/api/dashboard'
-import { adminOrders } from '@/api/order'
+import { adminOrders, exportOrders } from '@/api/order'
 import { listCategories } from '@/api/category'
 import type { Category, OrderStatus, OrderVO } from '@/types/api'
 import { orderStatusCls, orderStatusLabel } from '@/utils/status'
@@ -88,6 +88,22 @@ function onTrendRange(range: string): void {
 /** 批量派单：暂未实现（二期迭代） */
 function onBatchAssign(): void {
   ElMessage.info('该功能将在二期迭代中上线')
+}
+
+/* ---------- 导出报表：默认导出全部工单 ---------- */
+const exporting = ref(false)
+
+async function onExportReport(): Promise<void> {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    await exportOrders({})
+    ElMessage.success('报表已导出')
+  } catch {
+    // 错误提示已由下载工具 / 拦截器统一处理
+  } finally {
+    exporting.value = false
+  }
 }
 
 /* ---------- 指标卡数据（严格对应后端 totalOrders/pendingCount/processingCount/completionRate） ---------- */
@@ -341,7 +357,7 @@ onMounted(() => {
         <button type="button" class="btn btn-ghost btn-icon" aria-label="刷新数据" @click="onRefresh">
           <IconSvg name="i-refresh" :size="15" />
         </button>
-        <button type="button" class="btn btn-primary">
+        <button type="button" class="btn btn-primary" :disabled="exporting" @click="onExportReport">
           <IconSvg name="i-download" :size="15" />
           导出报表
         </button>
