@@ -1,7 +1,6 @@
 package com.repair.service.impl;
 
 import com.alibaba.excel.EasyExcel;
-import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -38,6 +37,7 @@ import com.repair.security.SecurityUtil;
 import com.repair.service.CategoryService;
 import com.repair.service.NotifyService;
 import com.repair.service.OrderService;
+import cn.hutool.http.HtmlUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -82,6 +82,17 @@ public class OrderServiceImpl implements OrderService {
     private static final DateTimeFormatter EXPORT_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    /**
+     * 清洗用户输入的富文本内容：过滤 HTML 标签（防存储型 XSS）并去除首尾空白。
+     * 传入 null 返回 null；传入空串返回空串，由上层校验决定是否合法。
+     */
+    private static String cleanHtml(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        return HtmlUtil.cleanHtmlTag(raw).trim();
+    }
+
     // ==================== 报修端 ====================
 
     @Override
@@ -90,12 +101,18 @@ public class OrderServiceImpl implements OrderService {
         LoginUser current = SecurityUtil.getCurrentUser();
         Category category = categoryService.getEnabledById(request.getCategoryId());
 
+        // 防存储型 XSS：过滤用户提交的标题与描述中的 HTML 标签；标题清洗后为空视为非法
+        String cleanTitle = cleanHtml(request.getTitle());
+        if (!StringUtils.hasText(cleanTitle)) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "故障标题不能为空");
+        }
+
         RepairOrder order = new RepairOrder();
         order.setOrderNo(OrderNoUtil.generate());
         order.setReporterId(current.getUserId());
         order.setCategoryId(category.getId());
-        order.setTitle(request.getTitle());
-        order.setDescription(request.getDescription());
+        order.setTitle(cleanTitle);
+        order.setDescription(cleanHtml(request.getDescription()));
         order.setImages(request.getImages());
         order.setAddress(request.getAddress());
         order.setContactPhone(request.getContactPhone());
@@ -189,13 +206,19 @@ public class OrderServiceImpl implements OrderService {
         }
         Category category = categoryService.getEnabledById(request.getCategoryId());
 
+        // 防存储型 XSS：过滤用户提交的标题与描述中的 HTML 标签；标题清洗后为空视为非法
+        String cleanTitle = cleanHtml(request.getTitle());
+        if (!StringUtils.hasText(cleanTitle)) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "故障标题不能为空");
+        }
+
         int rows = repairOrderMapper.update(null, new UpdateWrapper<RepairOrder>()
                 .eq("id", order.getId())
                 .eq("status", OrderStatus.PENDING)
                 .eq("deleted", 0)
                 .set("category_id", category.getId())
-                .set("title", request.getTitle())
-                .set("description", request.getDescription())
+                .set("title", cleanTitle)
+                .set("description", cleanHtml(request.getDescription()))
                 .set("images", request.getImages())
                 .set("address", request.getAddress())
                 .set("contact_phone", request.getContactPhone())
@@ -208,7 +231,7 @@ public class OrderServiceImpl implements OrderService {
 
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
                 "报修工单已修改",
-                "《" + request.getTitle() + "》已被报修人修改（单号：" + order.getOrderNo() + "）。",
+                "《" + cleanTitle + "》已被报修人修改（单号：" + order.getOrderNo() + "）。",
                 order.getId());
     }
 
@@ -423,7 +446,6 @@ public class OrderServiceImpl implements OrderService {
         List<OrderExportDTO> exportList = orders.stream().map(this::toExportDTO).toList();
         try {
             EasyExcel.write(response.getOutputStream(), OrderExportDTO.class)
-                    .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
                     .sheet("工单数据")
                     .doWrite(exportList);
         } catch (IOException e) {

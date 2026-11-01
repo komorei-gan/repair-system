@@ -8,14 +8,18 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { createCategory, deleteCategory, listAllCategories, updateCategory } from '@/api/category'
 import type { Category } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 /* ---------- 表格数据 ---------- */
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const categories = ref<Category[]>([])
 
 /* ---------- 弹窗状态 ---------- */
 const dialogVisible = ref(false)
 const submitting = ref(false)
+/** 正在删除的分类 id（禁用删除按钮防重复点击） */
+const deletingId = ref<number | null>(null)
 /** 编辑目标（null 表示新增） */
 const editing = ref<Category | null>(null)
 
@@ -107,12 +111,15 @@ async function onDelete(row: Category): Promise<void> {
     return // 用户取消
   }
 
+  deletingId.value = row.id
   try {
     await deleteCategory(row.id)
     ElMessage.success('分类已删除')
     await loadCategories()
   } catch {
     // 错误提示已由 axios 拦截器统一处理（含「分类下存在待处理工单」）
+  } finally {
+    deletingId.value = null
   }
 }
 
@@ -137,7 +144,9 @@ onMounted(() => {
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" aria-label="分类表格">
+      <TableSkeleton v-if="loading && categories.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="categories"
         row-key="id"
@@ -152,11 +161,19 @@ onMounted(() => {
         <el-table-column label="操作" width="140" fixed="right" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row as Category)">编辑</el-button>
-            <el-button link type="danger" @click="onDelete(row as Category)">删除</el-button>
+            <el-button
+              link
+              type="danger"
+              :loading="deletingId === row.id"
+              :disabled="deletingId === row.id"
+              @click="onDelete(row as Category)"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无分类" />
+          <el-empty description="暂无故障分类，点右上角新增一个吧" />
         </template>
       </el-table>
     </section>

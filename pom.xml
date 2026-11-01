@@ -64,6 +64,13 @@
             <version>4.5.0</version>
         </dependency>
 
+        <!-- Hutool 工具库：HtmlUtil.cleanHtmlTag 过滤 HTML 标签，防存储型 XSS -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.32</version>
+        </dependency>
+
         <!-- MySQL 驱动（版本由 Spring Boot parent 管理） -->
         <dependency>
             <groupId>com.mysql</groupId>

@@ -11,6 +11,7 @@ import { auditingOrders, auditOrder } from '@/api/order'
 import { useAppStore } from '@/stores/app'
 import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { OrderVO } from '@/types/api'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 /* ---------- 审批类型（Tab 对应后端 type 参数） ---------- */
 type AuditType = 'REASSIGN' | 'ARBITRATE'
@@ -37,7 +38,8 @@ const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.arbitration))
 watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.arbitration, v))
 
 /* ---------- 表格数据 ---------- */
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const list = ref<OrderVO[]>([])
 const total = ref(0)
 /** 正在操作的行（禁用按钮防重复点击） */
@@ -178,7 +180,9 @@ onMounted(() => {
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="待审批工单表格">
+      <TableSkeleton v-if="loading && list.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="list"
         row-key="id"
@@ -230,6 +234,7 @@ onMounted(() => {
               link
               type="primary"
               :loading="operatingId === row.id"
+              :disabled="operatingId === row.id"
               @click="onAudit(row as OrderVO, true)"
             >
               同意
@@ -238,6 +243,7 @@ onMounted(() => {
               link
               type="danger"
               :loading="operatingId === row.id"
+              :disabled="operatingId === row.id"
               @click="onAudit(row as OrderVO, false)"
             >
               驳回
@@ -245,7 +251,7 @@ onMounted(() => {
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无待审批工单" />
+          <el-empty description="暂时没有待审批的工单哦" />
         </template>
       </el-table>
 

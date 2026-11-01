@@ -12,6 +12,7 @@ import { useAppStore } from '@/stores/app'
 import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { AuditStatus, RepairerAuditVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 /* ---------- 筛选 Tab ---------- */
 const TABS: { label: string; value: AuditStatus }[] = [
@@ -42,7 +43,8 @@ const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.repairerAudit))
 watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.repairerAudit, v))
 
 /* ---------- 表格数据 ---------- */
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const list = ref<RepairerAuditVO[]>([])
 const total = ref(0)
 /** 正在操作的行（禁用按钮防重复点击） */
@@ -207,7 +209,9 @@ onMounted(() => {
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="师傅审核表格">
+      <TableSkeleton v-if="loading && list.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="list"
         row-key="id"
@@ -252,6 +256,7 @@ onMounted(() => {
                 link
                 type="primary"
                 :loading="operatingId === row.id"
+                :disabled="operatingId === row.id"
                 @click="onAudit(row as RepairerAuditVO, 1)"
               >
                 通过
@@ -260,6 +265,7 @@ onMounted(() => {
                 link
                 type="danger"
                 :loading="operatingId === row.id"
+                :disabled="operatingId === row.id"
                 @click="onAudit(row as RepairerAuditVO, 2)"
               >
                 拒绝
@@ -269,7 +275,7 @@ onMounted(() => {
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无申请" />
+          <el-empty description="暂无师傅注册申请" />
         </template>
       </el-table>
 

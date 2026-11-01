@@ -15,6 +15,7 @@ import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { Category, OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 import AssignDialog from '@/components/AssignDialog.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 /* ---------- 状态 Tab（「ALL」为哨兵值，避免空字符串歧义） ---------- */
 type TabValue = 'ALL' | OrderStatus
@@ -61,7 +62,8 @@ const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.orders))
 watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.orders, v))
 
 /* ---------- 表格数据 ---------- */
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const orders = ref<OrderVO[]>([])
 const total = ref(0)
 
@@ -69,6 +71,9 @@ const total = ref(0)
 const assignDialogVisible = ref(false)
 const assignMode = ref<'assign' | 'reassign'>('assign')
 const assignTarget = ref<OrderVO | null>(null)
+
+/** 正在执行行级写操作（审批/删除）的工单 id，用于禁用按钮防重复点击 */
+const actingId = ref<number | null>(null)
 
 /** 加载分类列表（失败不阻塞列表，拦截器已提示） */
 async function loadCategories(): Promise<void> {
@@ -244,6 +249,7 @@ async function onAudit(row: OrderVO, type: 'REASSIGN' | 'ARBITRATE', approve: bo
     return // 用户取消
   }
 
+  actingId.value = row.id
   try {
     await orderApi.auditOrder(row.id, { approve, type })
     ElMessage.success(`${actionText}成功`)
@@ -256,6 +262,8 @@ async function onAudit(row: OrderVO, type: 'REASSIGN' | 'ARBITRATE', approve: bo
     await loadOrders()
   } catch {
     // 错误提示已由 axios 拦截器统一处理
+  } finally {
+    actingId.value = null
   }
 }
 
@@ -271,6 +279,7 @@ async function onDelete(row: OrderVO): Promise<void> {
     return // 用户取消
   }
 
+  actingId.value = row.id
   try {
     await orderApi.deleteOrder(row.id)
     ElMessage.success('工单已删除')
@@ -281,6 +290,8 @@ async function onDelete(row: OrderVO): Promise<void> {
     await loadOrders()
   } catch {
     // 错误提示已由 axios 拦截器统一处理（含「流转中的工单无法删除」）
+  } finally {
+    actingId.value = null
   }
 }
 
@@ -360,7 +371,9 @@ watch(
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="工单表格">
+      <TableSkeleton v-if="loading && orders.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="orders"
         row-key="id"
@@ -414,6 +427,8 @@ watch(
               <el-button
                 link
                 type="primary"
+                :loading="actingId === row.id"
+                :disabled="actingId === row.id"
                 @click="onAudit(row as OrderVO, 'REASSIGN', true)"
               >
                 同意
@@ -421,6 +436,8 @@ watch(
               <el-button
                 link
                 type="danger"
+                :loading="actingId === row.id"
+                :disabled="actingId === row.id"
                 @click="onAudit(row as OrderVO, 'REASSIGN', false)"
               >
                 拒绝
@@ -431,6 +448,8 @@ watch(
               <el-button
                 link
                 type="primary"
+                :loading="actingId === row.id"
+                :disabled="actingId === row.id"
                 @click="onAudit(row as OrderVO, 'ARBITRATE', true)"
               >
                 同意
@@ -438,6 +457,8 @@ watch(
               <el-button
                 link
                 type="danger"
+                :loading="actingId === row.id"
+                :disabled="actingId === row.id"
                 @click="onAudit(row as OrderVO, 'ARBITRATE', false)"
               >
                 拒绝
@@ -450,6 +471,8 @@ watch(
               "
               link
               type="danger"
+              :loading="actingId === row.id"
+              :disabled="actingId === row.id"
               @click="onDelete(row as OrderVO)"
             >
               删除
@@ -457,7 +480,7 @@ watch(
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无工单" />
+          <el-empty description="暂时没有符合条件的工单哦" />
         </template>
       </el-table>
 

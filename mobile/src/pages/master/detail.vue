@@ -54,6 +54,9 @@ const completeVisible = ref(false)
 const repairResult = ref('')
 const completeSubmitting = ref(false)
 
+/** 接单提交中状态（禁用接单按钮防重复点击） */
+const acceptSubmitting = ref(false)
+
 const applyTitle = computed(() => (applyType.value === 'REASSIGN' ? '申请改派' : '申请驳回（恶意报修）'))
 const applyPlaceholder = computed(() =>
   applyType.value === 'REASSIGN'
@@ -210,6 +213,7 @@ async function handleAccept() {
     return // 用户取消
   }
 
+  acceptSubmitting.value = true
   try {
     await acceptOrder(detail.value!.id)
     console.log('[repairer] 接单成功, orderId=', detail.value!.id)
@@ -217,6 +221,8 @@ async function handleAccept() {
     setTimeout(() => uni.navigateBack(), 600)
   } catch (err) {
     console.error('[repairer] 接单失败', err)
+  } finally {
+    acceptSubmitting.value = false
   }
 }
 
@@ -411,6 +417,7 @@ onLoad((query) => {
       <template v-if="detail.status === 'ASSIGNED'">
         <wd-button
           type="primary"
+          :loading="acceptSubmitting"
           custom-class="action-bar__primary"
           @click="handleAccept"
         >

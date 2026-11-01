@@ -13,6 +13,7 @@ import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { OrderStatus, OrderVO } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 import AssignDialog from '@/components/AssignDialog.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,7 +26,8 @@ const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.dispatch))
 watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.dispatch, v))
 
 /* ---------- 表格数据 ---------- */
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const orders = ref<OrderVO[]>([])
 const total = ref(0)
 
@@ -129,7 +131,9 @@ onMounted(() => {
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="待派单工单表格">
+      <TableSkeleton v-if="loading && orders.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="orders"
         row-key="id"
@@ -163,7 +167,7 @@ onMounted(() => {
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无待派单工单" />
+          <el-empty description="暂时没有待派单的工单哦" />
         </template>
       </el-table>
 

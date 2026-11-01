@@ -9,6 +9,7 @@ import { pageUsers, updateUserStatus, approveReset } from '@/api/user'
 import { loadPageSize, savePageSize, PAGE_SIZE_KEY } from '@/utils/pageSize'
 import type { UserInfo } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 /* ---------- 角色筛选 ---------- */
 type RoleFilter = '' | 'ADMIN' | 'REPAIRER' | 'REPORTER'
@@ -29,7 +30,8 @@ const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.users))
 watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.users, v))
 
 /* ---------- 表格数据 ---------- */
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const users = ref<UserInfo[]>([])
 const total = ref(0)
 /** 正在切换状态的行（禁用按钮防重复点击） */
@@ -208,7 +210,9 @@ onMounted(() => {
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" style="animation-delay: 0.06s" aria-label="用户表格">
+      <TableSkeleton v-if="loading && users.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="users"
         row-key="id"
@@ -262,6 +266,7 @@ onMounted(() => {
                 link
                 :type="row.status === 1 ? 'danger' : 'success'"
                 :loading="togglingId === row.id"
+                :disabled="togglingId === row.id"
                 @click="onToggleStatus(row as UserInfo)"
               >
                 {{ row.status === 1 ? '禁用' : '启用' }}
@@ -269,7 +274,7 @@ onMounted(() => {
               <el-button
                 link
                 type="primary"
-                :disabled="(row as UserInfo).resetApproved !== 1"
+                :disabled="(row as UserInfo).resetApproved !== 1 || approvingId === row.id"
                 :loading="approvingId === row.id"
                 @click="onApproveReset(row as UserInfo)"
               >
@@ -286,7 +291,7 @@ onMounted(() => {
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无用户" />
+          <el-empty description="没有找到相关的用户" />
         </template>
       </el-table>
 

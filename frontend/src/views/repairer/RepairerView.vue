@@ -5,8 +5,10 @@
  */
 import { onMounted, ref } from 'vue'
 import { getRepairerLeaderboard, type RepairerLeaderboardItem } from '@/api/dashboard'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
-const loading = ref(false)
+// 初始为 true：首屏立即展示骨架屏，避免「空表格 → 骨架 → 数据」的闪烁
+const loading = ref(true)
 const repairers = ref<RepairerLeaderboardItem[]>([])
 
 async function load(): Promise<void> {
@@ -52,7 +54,9 @@ onMounted(() => {
 
     <!-- ============ 表格区 ============ -->
     <section class="card table-card rise" aria-label="师傅业绩榜">
+      <TableSkeleton v-if="loading && repairers.length === 0" />
       <el-table
+        v-else
         v-loading="loading"
         :data="repairers"
         row-key="id"
@@ -90,7 +94,7 @@ onMounted(() => {
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无维修师傅" />
+          <el-empty description="暂无维修师傅数据" />
         </template>
       </el-table>
     </section>

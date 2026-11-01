@@ -1,6 +1,7 @@
 package com.repair.dto;
 
 import com.alibaba.excel.annotation.ExcelProperty;
+import com.alibaba.excel.annotation.write.style.ColumnWidth;
 import lombok.Data;
 
 /**
@@ -12,29 +13,36 @@ public class OrderExportDTO {
 
     /** 工单号 */
     @ExcelProperty("工单号")
+    @ColumnWidth(25)
     private String orderNo;
 
     /** 故障标题 */
     @ExcelProperty("故障标题")
+    @ColumnWidth(35)
     private String title;
 
     /** 故障分类名 */
     @ExcelProperty("分类")
+    @ColumnWidth(15)
     private String categoryName;
 
     /** 报修人姓名（real_name 优先） */
     @ExcelProperty("报修人")
+    @ColumnWidth(15)
     private String reporterName;
 
     /** 维修师傅姓名（可能为空，未派单时导出空单元格） */
     @ExcelProperty("维修师傅")
+    @ColumnWidth(15)
     private String repairerName;
 
     /** 状态中文名（已映射，如「维修中」） */
     @ExcelProperty("状态")
+    @ColumnWidth(15)
     private String status;
 
     /** 创建时间（yyyy-MM-dd HH:mm:ss） */
     @ExcelProperty("创建时间")
+    @ColumnWidth(22)
     private String createdAt;
 }
