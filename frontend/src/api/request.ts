@@ -84,17 +84,17 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
 }
 
 export const http = {
-  get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-    return request<T>({ method: 'GET', url, params })
+  get<T>(url: string, params?: Record<string, unknown>, config?: AxiosRequestConfig): Promise<T> {
+    return request<T>({ method: 'GET', url, params, ...config })
   },
-  post<T>(url: string, data?: unknown): Promise<T> {
-    return request<T>({ method: 'POST', url, data })
+  post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return request<T>({ method: 'POST', url, data, ...config })
   },
-  put<T>(url: string, data?: unknown): Promise<T> {
-    return request<T>({ method: 'PUT', url, data })
+  put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return request<T>({ method: 'PUT', url, data, ...config })
   },
-  delete<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-    return request<T>({ method: 'DELETE', url, params })
+  delete<T>(url: string, params?: Record<string, unknown>, config?: AxiosRequestConfig): Promise<T> {
+    return request<T>({ method: 'DELETE', url, params, ...config })
   },
 }
 

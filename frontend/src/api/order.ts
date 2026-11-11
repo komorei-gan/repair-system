@@ -46,9 +46,9 @@ export function deleteOrder(id: number): Promise<void> {
   return http.delete<void>(`/api/admin/orders/${id}`)
 }
 
-/** 待受理（PENDING）工单数，供左侧菜单角标展示 */
+/** 待受理（PENDING）工单数，供左侧菜单角标展示（后台静默轮询，失败不弹错） */
 export function pendingCount(): Promise<number> {
-  return http.get<number>('/api/admin/orders/pending-count')
+  return http.get<number>('/api/admin/orders/pending-count', undefined, { suppressErrorToast: true })
 }
 
 /** 待审批工单列表参数（type: REASSIGN / ARBITRATE / 空=全部） */
@@ -68,9 +68,9 @@ export function auditingOrders(params: AuditingQueryParams): Promise<PageResult<
   })
 }
 
-/** 待审批（REASSIGNING / ARBITRATING）工单数，供左侧仲裁中心角标展示 */
+/** 待审批（REASSIGNING / ARBITRATING）工单数，供左侧仲裁中心角标展示（后台静默轮询，失败不弹错） */
 export function auditingCount(): Promise<number> {
-  return http.get<number>('/api/admin/orders/auditing-count')
+  return http.get<number>('/api/admin/orders/auditing-count', undefined, { suppressErrorToast: true })
 }
 
 /** 统一审批参数（approve + type + remark） */

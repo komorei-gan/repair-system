@@ -1,6 +1,8 @@
 <script setup lang="ts">
 /**
- * 顶栏 —— 面包屑、搜索、帮助、铃铛（30s 轮询未读数）、用户信息、登出。
+ * 顶栏 —— 面包屑、搜索、帮助、铃铛、用户信息、登出。
+ * 说明：铃铛未读数的轮询已上提到 AdminLayout（后台常驻根，不随路由切换卸载），
+ * 此处不再自行起轮询，避免重复请求。初次进入时由 AdminLayout 立即拉取一次。
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -18,7 +20,6 @@ const router = useRouter()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
-let pollTimer: number | undefined
 /** 帮助中心弹窗显隐 */
 const helpVisible = ref(false)
 /** 通知详情弹窗：显隐 + 当前展示的通知 */
@@ -59,21 +60,12 @@ function onDropdownCommand(cmd: string): void {
 }
 
 onMounted(() => {
+  // 进入顶栏即主动拉取一次未读数，避免等待下一轮轮询（其余角标由 AdminLayout 兜底）
   void appStore.refreshUnreadCount()
-  void appStore.refreshDispatchPendingCount()
-  void appStore.refreshRepairerAuditPendingCount()
-  void appStore.refreshArbitrationPendingCount()
-  pollTimer = window.setInterval(() => {
-    void appStore.refreshUnreadCount()
-    void appStore.refreshDispatchPendingCount()
-    void appStore.refreshRepairerAuditPendingCount()
-    void appStore.refreshArbitrationPendingCount()
-  }, 30_000)
   document.addEventListener('click', onDocClick)
 })
 
 onBeforeUnmount(() => {
-  if (pollTimer) window.clearInterval(pollTimer)
   document.removeEventListener('click', onDocClick)
 })
 

@@ -8,7 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as orderApi from '@/api/order'
 import { useAppStore } from '@/stores/app'
-import { STATUS_COLORS, orderStatusLabel } from '@/utils/status'
+import { STATUS_COLORS, orderStatusLabel, orderLogActionLabel } from '@/utils/status'
 import type { OrderDetailVO, OrderStatus } from '@/types/api'
 import IconSvg from '@/components/IconSvg.vue'
 
@@ -34,6 +34,23 @@ const imageList = computed<string[]>(() => {
     return []
   }
 })
+
+/** 申请改派 / 申请仲裁日志的证据图（工单顶层 applyImages 的 JSON 数组） */
+const logApplyImages = computed<string[]>(() => {
+  const raw = detail.value?.applyImages
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string' && v) : []
+  } catch {
+    return []
+  }
+})
+
+/** 该日志动作是否需要展示证据图（申请改派 / 申请仲裁） */
+function isApplyAction(action: string): boolean {
+  return action === 'ARBITRATE_REQUEST' || action === 'REASSIGN_REQUEST'
+}
 
 async function load(): Promise<void> {
   errorText.value = ''
@@ -77,21 +94,6 @@ function goBack(): void {
 function statusStyle(status: OrderStatus): Record<string, string> {
   const color = STATUS_COLORS[status] ?? '#1890FF'
   return { color, backgroundColor: `${color}1A`, borderColor: `${color}40` }
-}
-
-/** 日志动作映射为中文 */
-function actionLabel(action: string): string {
-  const map: Record<string, string> = {
-    SUBMIT: '提交报修',
-    ASSIGN: '派单',
-    ACCEPT: '接单',
-    REJECT: '驳回/拒单',
-    FINISH: '维修完成',
-    CONFIRM: '确认评价',
-    CANCEL: '取消',
-    REMIND: '催单',
-  }
-  return map[action] ?? action
 }
 
 onMounted(load)
@@ -180,10 +182,23 @@ watch(
               placement="top"
             >
               <div class="log-line">
-                <b>{{ actionLabel(log.action) }}</b>
+                <b>{{ orderLogActionLabel(log.action) }}</b>
                 <span v-if="log.operatorName" class="log-operator">{{ log.operatorName }}</span>
               </div>
               <p v-if="log.remark" class="log-remark">{{ log.remark }}</p>
+              <!-- 申请改派 / 申请仲裁日志：展示证据图片缩略图，点击放大 -->
+              <div v-if="isApplyAction(log.action) && logApplyImages.length" class="log-images">
+                <el-image
+                  v-for="(img, idx) in logApplyImages"
+                  :key="img"
+                  class="log-thumb"
+                  :src="img"
+                  :preview-src-list="logApplyImages"
+                  :initial-index="idx"
+                  fit="cover"
+                  preview-teleported
+                />
+              </div>
             </el-timeline-item>
           </el-timeline>
           <el-empty v-else description="暂无操作日志" />
@@ -351,6 +366,24 @@ watch(
   margin-top: 4px;
   font-size: 12.5px;
   color: var(--muted);
+}
+.log-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.log-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  flex: none;
+}
+.log-thumb :deep(.el-image__inner) {
+  border-radius: 8px;
 }
 
 @media (max-width: 900px) {

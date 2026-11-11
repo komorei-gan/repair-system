@@ -17,9 +17,11 @@ export function listNotifications(
   })
 }
 
-/** 未读数（30s 轮询专用，轻量） */
+/** 未读数（后台静默轮询专用，轻量；失败不弹错、不跳登录） */
 export function unreadCount(): Promise<UnreadCountVO> {
-  return http.get<UnreadCountVO>('/api/notifications/unread-count')
+  return http.get<UnreadCountVO>('/api/notifications/unread-count', undefined, {
+    suppressErrorToast: true,
+  })
 }
 
 /** 标记单条已读（幂等） */

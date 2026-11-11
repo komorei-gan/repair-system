@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * 管理端布局骨架：侧边栏 + 顶栏 + 主内容区（router-view）。
- * 进入后台布局即拉取左侧菜单三项角标计数（派单中心 / 师傅审核 / 通知中心）。
+ * 进入后台布局即拉取左侧菜单三项角标计数（派单中心 / 师傅审核 / 通知中心），
+ * 并启动全局轮询定时器：本组件是后台常驻根，不随路由切换卸载，
+ * 因此铃铛未读数等角标可以稳定地每 5 秒刷新一次，无需用户手动 F5。
  */
-import { onMounted, watch } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import SidebarNav from './components/SidebarNav.vue'
@@ -12,9 +14,41 @@ import TopBar from './components/TopBar.vue'
 const route = useRoute()
 const appStore = useAppStore()
 
-// 进入后台即拉取左侧菜单角标计数（红点状态），后续由操作与轮询驱动更新
+/** 轮询间隔：5 秒（移动端发起申请后 Web 端 5s 内即可看到铃铛角标变化） */
+const POLL_INTERVAL_MS = 5_000
+
+/** 轮询定时器句柄；undefined 表示未启动 */
+let pollTimer: number | undefined
+/** 单次轮询是否仍在进行中（防止上一次未返回时叠加下一次请求） */
+let polling = false
+
+/** 拉取全部角标计数：失败静默（拦截器已 suppressErrorToast，store 内也各自 try/catch） */
+async function pollBadges(): Promise<void> {
+  if (polling) return
+  polling = true
+  try {
+    await appStore.refreshBadgeCounts()
+  } finally {
+    polling = false
+  }
+}
+
+// 进入后台即拉取左侧菜单角标计数（红点状态），后续由轮询驱动更新
 onMounted(() => {
-  void appStore.refreshBadgeCounts()
+  void pollBadges()
+  // 启动轮询：赋值前先清理，防止极端情况下重复挂载叠加定时器
+  if (pollTimer) window.clearInterval(pollTimer)
+  pollTimer = window.setInterval(() => {
+    void pollBadges()
+  }, POLL_INTERVAL_MS)
+})
+
+// 组件卸载时清空定时器，防止内存泄漏与重复触发
+onBeforeUnmount(() => {
+  if (pollTimer !== undefined) {
+    window.clearInterval(pollTimer)
+    pollTimer = undefined
+  }
 })
 
 // 路由切换时关闭移动端抽屉与通知面板

@@ -45,3 +45,28 @@ export const NOTIFICATION_TYPE_META: Record<
   ORDER: { label: '工单通知', cls: 'notif-ico blue' },
   SYSTEM: { label: '系统通知', cls: 'notif-ico slate' },
 }
+
+/**
+ * 工单操作日志动作映射字典（后端英文动作码 → 中文）。
+ * 后端 order_log.action 全集：SUBMIT / ASSIGN / ACCEPT / FINISH / CONFIRM /
+ * CANCEL / UPDATE / ARBITRATE_REQUEST / REASSIGN_REQUEST / AUDIT / REJECT / REMIND。
+ */
+export const ORDER_LOG_ACTION_MAP: Record<string, string> = {
+  SUBMIT: '提交报修',
+  ASSIGN: '派单',
+  ACCEPT: '接单',
+  FINISH: '提交完工',
+  CONFIRM: '确认评价',
+  CANCEL: '取消工单',
+  UPDATE: '修改工单',
+  ARBITRATE_REQUEST: '申请仲裁',
+  REASSIGN_REQUEST: '申请改派',
+  AUDIT: '仲裁/改派审批',
+  REJECT: '驳回/拒单',
+  REMIND: '催单',
+}
+
+/** 动作码 → 中文（未收录的动作码原样返回，避免出现 undefined） */
+export function orderLogActionLabel(action: string): string {
+  return ORDER_LOG_ACTION_MAP[action] ?? action
+}
