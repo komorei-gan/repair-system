@@ -38,6 +38,26 @@ watch(detailVisible, (v) => {
 
 const pageTitle = computed(() => String(route.meta.title ?? ''))
 
+/** 当前登录用户是否为管理员（管理员无「个人中心」页面，下拉菜单需隐藏该项） */
+const isAdmin = computed(() => authStore.user?.role === 'ADMIN')
+
+/**
+ * 用户下拉菜单统一入口：
+ * - settings → 跳转系统设置页
+ * - logout   → 二次确认后登出
+ */
+function onDropdownCommand(cmd: string): void {
+  if (cmd === 'settings') {
+    if (route.name !== 'settings') {
+      void router.push('/settings')
+    }
+    return
+  }
+  if (cmd === 'logout') {
+    void onLogout()
+  }
+}
+
 onMounted(() => {
   void appStore.refreshUnreadCount()
   void appStore.refreshDispatchPendingCount()
@@ -165,7 +185,7 @@ async function onLogout(): Promise<void> {
 
       <div class="topbar-divider" aria-hidden="true"></div>
 
-      <el-dropdown trigger="click" @command="(cmd: string) => cmd === 'logout' && onLogout()">
+      <el-dropdown trigger="click" @command="onDropdownCommand">
         <button type="button" class="profile">
           <span class="avatar-lg" aria-hidden="true">{{ authStore.avatarChar }}</span>
           <span class="profile-meta">
@@ -175,9 +195,19 @@ async function onLogout(): Promise<void> {
           <IconSvg name="i-chevron-down" :size="14" />
         </button>
         <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item disabled>个人中心</el-dropdown-item>
-            <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+          <el-dropdown-menu class="profile-menu">
+            <el-dropdown-item v-if="!isAdmin" disabled>
+              <IconSvg name="i-user" :size="15" />
+              个人中心
+            </el-dropdown-item>
+            <el-dropdown-item command="settings" :divided="!isAdmin">
+              <IconSvg name="i-sliders" :size="15" />
+              系统设置
+            </el-dropdown-item>
+            <el-dropdown-item command="logout" divided>
+              <IconSvg name="i-logout" :size="15" />
+              退出登录
+            </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -341,6 +371,44 @@ html.dark .profile:hover {
 }
 .profile :deep(.ico) {
   color: #a5b7c9;
+}
+
+/* ===== 用户下拉菜单 ===== */
+/* 下拉菜单通过 teleport 渲染到 body，需用 :global 穿透 scoped 作用域 */
+:global(.profile-menu) {
+  min-width: 168px;
+  padding: 6px;
+}
+:global(.profile-menu .el-dropdown-menu__item) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1;
+}
+:global(.profile-menu .el-dropdown-menu__item:not(.is-disabled):not(.is-divided)) {
+  color: #3e5872;
+}
+:global(.profile-menu .el-dropdown-menu__item:not(.is-disabled):hover) {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+:global(.profile-menu .el-dropdown-menu__item .ico) {
+  flex: none;
+  color: #8fa3b8;
+}
+:global(.profile-menu .el-dropdown-menu__item:not(.is-disabled):hover .ico) {
+  color: var(--blue-600);
+}
+/* 分割线项：上方留出间距，避免菜单项挤在一起 */
+:global(.profile-menu .el-dropdown-menu__item--divided) {
+  margin-top: 6px;
+}
+:global(.profile-menu .el-dropdown-menu__item--divided::before) {
+  margin: 0 -6px 6px;
 }
 
 /* ===== 响应式 ===== */

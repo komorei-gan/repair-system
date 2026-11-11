@@ -28,6 +28,18 @@ const rangeTabs = ['今日', '本周', '本月']
 const activeRange = ref('本周')
 const trendRange = ref('近 7 天')
 
+/**
+ * 切换统计时间范围：当前底层仅实现「本周」口径。
+ * 「今日」「本月」暂未实现（二期迭代），点击时给出提示且高亮保持在「本周」不动。
+ */
+function onRangeChange(range: string): void {
+  if (range !== '本周') {
+    ElMessage.info('该时间范围的统计功能将在二期迭代中上线')
+    return
+  }
+  activeRange.value = range
+}
+
 /* ---------- 刷新信号：驱动指标卡数字重滚 ---------- */
 const refreshKey = ref(0)
 
@@ -87,6 +99,11 @@ function onTrendRange(range: string): void {
 
 /** 批量派单：暂未实现（二期迭代） */
 function onBatchAssign(): void {
+  ElMessage.info('该功能将在二期迭代中上线')
+}
+
+/** 时间范围筛选（近 7 天）：动态时间范围暂未实现（二期迭代），与「批量派单」保持一致的提示 */
+function onDateRangeClick(): void {
   ElMessage.info('该功能将在二期迭代中上线')
 }
 
@@ -349,7 +366,7 @@ onMounted(() => {
             type="button"
             role="tab"
             :aria-selected="activeRange === t"
-            @click="activeRange = t"
+            @click="onRangeChange(t)"
           >
             {{ t }}
           </button>
@@ -454,7 +471,7 @@ onMounted(() => {
           >
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
-          <button type="button" class="select-btn">
+          <button type="button" class="select-btn" @click="onDateRangeClick">
             <IconSvg name="i-calendar" :size="14" />
             近 7 天
             <IconSvg name="i-chevron-down" :size="12" />
@@ -487,9 +504,6 @@ onMounted(() => {
           </caption>
           <thead>
             <tr>
-              <th scope="col">
-                <label class="check"><input type="checkbox" aria-label="全选当前页工单" /></label>
-              </th>
               <th scope="col">工单 / 故障描述</th>
               <th scope="col">分类</th>
               <th scope="col">报修人</th>
@@ -501,11 +515,6 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr v-for="row in orders" :key="row.orderNo">
-              <td>
-                <label class="check"
-                  ><input type="checkbox" :aria-label="`选择工单 ${row.orderNo}`"
-                /></label>
-              </td>
               <td class="order-cell">
                 <div class="order-no">{{ row.orderNo }}</div>
                 <span class="order-title">{{ row.title }}</span>
@@ -1045,10 +1054,6 @@ thead th {
 html.dark thead th {
   color: #7a90a8;
 }
-thead th:first-child {
-  padding-left: 22px;
-  width: 46px;
-}
 thead th:last-child {
   padding-right: 22px;
 }
@@ -1060,9 +1065,6 @@ tbody td {
   text-align: center;
   font-size: 12.5px;
   color: var(--cell-text);
-}
-tbody td:first-child {
-  padding-left: 22px;
 }
 tbody td:last-child {
   padding-right: 22px;
@@ -1077,49 +1079,18 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.check {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-.check input {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid #c9d9e8;
-  border-radius: 5px;
-  background: var(--surface);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  position: relative;
-  display: block;
-}
-.check input:hover {
-  border-color: #8fbef0;
-}
-.check input:checked {
-  background: var(--blue-500);
-  border-color: var(--blue-500);
-}
-.check input:checked::after {
-  content: '';
-  position: absolute;
-  left: 4.5px;
-  top: 1.5px;
-  width: 4px;
-  height: 8px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(42deg);
-}
-
+/*
+ * 工单 / 故障描述列：内部为「单号 + 标题 + 地址」多行结构。
+ * 注意不能把 td 设为 flex（会破坏 table-cell 布局算法），
+ * 改为让各子元素自身内联/自动外边距居中，与已居中的表头对齐。
+ */
 .order-cell {
   min-width: 250px;
 }
 .order-no {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 10.5px;
@@ -1142,6 +1113,9 @@ tbody tr:last-child td {
 .order-title {
   display: block;
   margin-top: 3px;
+  /* 块级元素受 max-width 限制，需水平自动外边距才能在整列中居中 */
+  margin-inline: auto;
+  text-align: center;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-2);
@@ -1158,6 +1132,7 @@ tr:hover .order-title {
 .order-addr {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   margin-top: 3px;
   font-size: 10.5px;
@@ -1204,11 +1179,14 @@ tr:hover .order-title {
   background: #6e8ba8;
 }
 
+/* 报修人 / 维修师傅列：头像 + 姓名横向整体居中，与表头对齐 */
 .person {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   white-space: nowrap;
+  vertical-align: middle;
 }
 .avatar {
   width: 28px;
@@ -1240,6 +1218,7 @@ tr:hover .order-title {
 .unassigned {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   height: 26px;
   padding: 0 8px;
@@ -1249,6 +1228,7 @@ tr:hover .order-title {
   color: #93a7bb;
   background: #fbfdff;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 /* 状态胶囊 */
