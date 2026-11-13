@@ -58,25 +58,31 @@ const trendNew = ref<number[]>([])
 const trendDone = ref<number[]>([])
 const orders = ref<OrderVO[]>([])
 const orderTotal = ref(0)
+/** 看板首屏加载态：初始 true，避免指标卡先显示 0 再跳变 */
+const loading = ref(true)
 
 /** 拉取看板统计 + 最新 5 条工单 */
 async function fetchData(): Promise<void> {
-  const [stats, orderPage] = await Promise.all([
-    getDashboardStats(),
-    adminOrders({ pageNum: orderPageNum.value, pageSize: orderPageSize.value }),
-  ])
+  try {
+    const [stats, orderPage] = await Promise.all([
+      getDashboardStats(),
+      adminOrders({ pageNum: orderPageNum.value, pageSize: orderPageSize.value }),
+    ])
 
-  totalOrders.value = stats.totalOrders
-  pendingCount.value = stats.pendingCount
-  processingCount.value = stats.processingCount
-  completionRate.value = stats.completionRate
-  statusDistribution.value = stats.statusDistribution
-  trendDays.value = stats.trend.map((t) => t.date)
-  trendNew.value = stats.trend.map((t) => t.newCount)
-  trendDone.value = stats.trend.map((t) => t.doneCount)
+    totalOrders.value = stats.totalOrders
+    pendingCount.value = stats.pendingCount
+    processingCount.value = stats.processingCount
+    completionRate.value = stats.completionRate
+    statusDistribution.value = stats.statusDistribution
+    trendDays.value = stats.trend.map((t) => t.date)
+    trendNew.value = stats.trend.map((t) => t.newCount)
+    trendDone.value = stats.trend.map((t) => t.doneCount)
 
-  orders.value = orderPage.records
-  orderTotal.value = orderPage.total
+    orders.value = orderPage.records
+    orderTotal.value = orderPage.total
+  } finally {
+    loading.value = false
+  }
 }
 
 /** 点击刷新：数字重滚 + 环形图与折线图重新生长 */
@@ -342,7 +348,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dashboard">
+  <div class="dashboard" v-loading="loading">
     <!-- ============ 页头 ============ -->
     <div class="page-head">
       <div>

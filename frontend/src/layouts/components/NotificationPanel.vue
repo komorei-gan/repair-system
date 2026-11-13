@@ -14,7 +14,7 @@ const appStore = useAppStore()
 
 const list = ref<NotificationVO[]>([])
 const unreadTotal = ref(0)
-const loading = ref(false)
+const loading = ref(true)
 const markAllDone = ref(false)
 
 const unreadCount = computed(() => list.value.filter((n) => n.isRead === 0).length)

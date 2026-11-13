@@ -27,7 +27,7 @@ const pageSize = ref(loadPageSize(PAGE_SIZE_KEY.notice))
 watch(pageSize, (v) => savePageSize(PAGE_SIZE_KEY.notice, v))
 
 /* ---------- 列表数据 ---------- */
-const loading = ref(false)
+const loading = ref(true)
 const list = ref<NotificationVO[]>([])
 const total = ref(0)
 /** 「全部标记已读」提交中状态（防重复点击） */

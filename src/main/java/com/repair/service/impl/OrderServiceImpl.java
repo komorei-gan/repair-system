@@ -179,12 +179,16 @@ public class OrderServiceImpl implements OrderService {
         LoginUser current = SecurityUtil.getCurrentUser();
         RepairOrder order = lockOrder(id);
         requireReporter(order, current);
-        OrderStatus.requireTransition(order.getStatus(), OrderStatus.CANCELLED);
+        // 报修人仅在「待受理（PENDING）」状态可撤回；已派单后需由管理员取消，避免绕过派单流程
+        if (!OrderStatus.PENDING.equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "只有待受理状态的工单才能取消");
+        }
+        String fromStatus = order.getStatus();
 
         UpdateWrapper<RepairOrder> wrapper = new UpdateWrapper<RepairOrder>()
                 .set("cancel_reason", request.getReason());
         transition(order, OrderStatus.CANCELLED, wrapper);
-        recordLog(order.getId(), current, "CANCEL", OrderStatus.PENDING, OrderStatus.CANCELLED,
+        recordLog(order.getId(), current, "CANCEL", fromStatus, OrderStatus.CANCELLED,
                 "报修人取消：" + request.getReason());
 
         notifyService.notifyUsers(listEnabledUserIds(RoleEnum.ADMIN), NotificationType.ORDER,
@@ -628,7 +632,11 @@ public class OrderServiceImpl implements OrderService {
     public void assign(Long id, AssignRequest request) {
         LoginUser current = SecurityUtil.getCurrentUser();
         RepairOrder order = lockOrder(id);
-        OrderStatus.requireTransition(order.getStatus(), OrderStatus.ASSIGNED);
+        // 派单仅允许从「待派单」发起：状态机里 ASSIGNED -> ASSIGNED 是合法跳转，
+        // 若不加此守卫，两个管理员并发/先后派单时第二次会静默覆盖 repairer_id，造成师傅被无通知换掉。
+        if (!OrderStatus.PENDING.equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "只有待派单状态的工单才能派单");
+        }
         User repairer = requireRepairer(request.getRepairerId());
 
         transition(order, OrderStatus.ASSIGNED,
@@ -728,6 +736,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteByAdmin(Long id) {
+        LoginUser current = SecurityUtil.getCurrentUser();
         RepairOrder order = lockOrder(id);
         // 仅「待派单（PENDING）」「已驳回（REJECTED）」「已取消（CANCELLED）」可删除；
         // 已派单、维修中、已完成等流转中状态一律拒绝
@@ -736,6 +745,8 @@ public class OrderServiceImpl implements OrderService {
                 && !OrderStatus.REJECTED.equals(order.getStatus())) {
             throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "流转中的工单无法删除，请先取消或驳回");
         }
+        // 记录删除审计日志（工单被逻辑删除后详情页不再可查，但 order_log 需留痕）
+        recordLog(order.getId(), current, "DELETE", order.getStatus(), null, "管理员删除工单");
         // 逻辑删除：RepairOrder 上的 @TableLogic 注解会让 deleteById 执行 UPDATE deleted=1，不物理删除
         repairOrderMapper.deleteById(id);
     }

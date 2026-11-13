@@ -7,7 +7,29 @@
 import type { Result } from '@/types/api'
 import { clearToken, getToken } from '@/utils/token'
 
-const BASE_URL = 'http://localhost:8080'
+/**
+ * 后端地址推导：
+ * 1) 优先读环境变量 VITE_API_BASE_URL（可覆盖为公网地址）；
+ * 2) H5 端回退用 window.location.hostname（浏览器所在机器）推导局域网 IP，
+ *    便于真机通过宿主机 IP 调试，也适配后续公网部署（只需把域名指向后端）；
+ * 3) 小程序 / App 端无 window 对象，回退 localhost（需在打包时显式配置 VITE_API_BASE_URL）。
+ */
+function resolveBaseUrl(): string {
+  // #ifdef H5
+  const env = import.meta.env?.VITE_API_BASE_URL as string | undefined
+  if (env) return env.replace(/\/+$/, '')
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:8080`
+  }
+  // #endif
+  // #ifndef H5
+  const env = import.meta.env?.VITE_API_BASE_URL as string | undefined
+  if (env) return env.replace(/\/+$/, '')
+  // #endif
+  return 'http://localhost:8080'
+}
+
+const BASE_URL = resolveBaseUrl()
 
 /** 网络层失败：无 statusCode（后端未启动 / 域名不可达） */
 function isNetworkError(statusCode: number | undefined): boolean {

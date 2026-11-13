@@ -64,6 +64,7 @@ export const ORDER_LOG_ACTION_MAP: Record<string, string> = {
   AUDIT: '仲裁/改派审批',
   REJECT: '驳回/拒单',
   REMIND: '催单',
+  DELETE: '删除工单',
 }
 
 /** 动作码 → 中文（未收录的动作码原样返回，避免出现 undefined） */

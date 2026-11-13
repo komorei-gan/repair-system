@@ -17,8 +17,8 @@ const formRef = ref<FormInstance>()
 const loading = ref(false)
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123',
+  username: '',
+  password: '',
 })
 
 const rules: FormRules = {
@@ -132,7 +132,7 @@ const features = [
         </el-form>
 
         <div class="hint">
-          演示账号 <code>admin</code> / <code>admin123</code>（需先启动后端服务）
+          请使用管理员账号登录（需先启动后端服务）
         </div>
       </div>
     </section>

@@ -7,7 +7,7 @@
  */
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { orderDetail } from '@/api/order'
+import { orderDetail, cancelOrder } from '@/api/order'
 import { getToken } from '@/utils/token'
 import { orderStatusLabel, orderStatusCls } from '@/utils/status'
 import type { OrderDetailVO, OrderLogVO } from '@/types/api'
@@ -15,6 +15,43 @@ import type { OrderDetailVO, OrderLogVO } from '@/types/api'
 const detail = ref<OrderDetailVO | null>(null)
 const loading = ref(true)
 const loadError = ref(false)
+
+/* ---------- 撤回弹窗（仅待受理 PENDING 可撤回） ---------- */
+const cancelVisible = ref(false)
+const cancelReason = ref('')
+const cancelSubmitting = ref(false)
+
+/** 跳转修改页（仅 PENDING 可进入） */
+function goEdit() {
+  if (!detail.value) return
+  uni.navigateTo({ url: `/pages/order/edit?id=${detail.value.id}` })
+}
+
+/** 打开撤回弹窗 */
+function openCancel() {
+  cancelReason.value = ''
+  cancelVisible.value = true
+}
+
+/** 确认撤回：调用 PUT /api/orders/{id}/cancel，成功后刷新详情（状态变 CANCELLED） */
+async function submitCancel() {
+  if (!detail.value) return
+  if (!cancelReason.value.trim()) {
+    uni.showToast({ title: '请输入撤回原因', icon: 'none' })
+    return
+  }
+  cancelSubmitting.value = true
+  try {
+    await cancelOrder(detail.value.id, cancelReason.value.trim())
+    uni.showToast({ title: '已撤回', icon: 'success' })
+    cancelVisible.value = false
+    await fetchDetail(detail.value.id)
+  } catch {
+    // 错误提示已由 request 层统一 showToast 处理
+  } finally {
+    cancelSubmitting.value = false
+  }
+}
 
 /** 驳回证据图片 URL 列表（applyImages 为 JSON 数组字符串） */
 const applyImageList = computed<string[]>(() => {
@@ -246,6 +283,45 @@ onLoad((query) => {
       <wd-empty v-else tip="工单不存在" />
     </view>
 
+    <!-- 底部操作栏：报修人在「待受理（PENDING）」下可修改 / 撤回 -->
+    <view v-if="detail && detail.status === 'PENDING'" class="action-bar">
+      <wd-button plain custom-class="action-bar__ghost" @click="goEdit">修改</wd-button>
+      <wd-button type="danger" custom-class="action-bar__danger" @click="openCancel">撤回</wd-button>
+    </view>
+
+    <!-- 撤回原因弹窗 -->
+    <wd-popup
+      v-model="cancelVisible"
+      position="bottom"
+      round
+      safe-area-inset-bottom
+      custom-class="popup-panel"
+      @click-modal="cancelVisible = false"
+    >
+      <view class="popup-panel__title">撤回工单</view>
+      <view class="popup-panel__body">
+        <wd-textarea
+          v-model="cancelReason"
+          placeholder="请输入撤回原因"
+          :maxlength="200"
+          show-word-limit
+          auto-height
+        />
+      </view>
+      <view class="popup-panel__footer">
+        <wd-button block custom-class="popup-panel__cancel" @click="cancelVisible = false">取消</wd-button>
+        <wd-button
+          block
+          type="danger"
+          :loading="cancelSubmitting"
+          custom-class="popup-panel__confirm"
+          @click="submitCancel"
+        >
+          确认撤回
+        </wd-button>
+      </view>
+    </wd-popup>
+
     <wd-toast />
   </view>
 </template>
@@ -256,8 +332,81 @@ onLoad((query) => {
   background: var(--bg-page);
 }
 
+/* ===== 底部操作栏（仅 PENDING 显示） ===== */
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: var(--bg-card);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  z-index: 50;
+}
+
+.action-bar .wd-button {
+  flex: 1;
+}
+
+:deep(.action-bar__ghost) {
+  flex: 1;
+  border-radius: 22px !important;
+  border: 1px solid #d6e4f5 !important;
+  background: var(--bg-hover) !important;
+  color: #1890ff !important;
+}
+
+:deep(.action-bar__danger) {
+  flex: 1;
+  border-radius: 22px !important;
+  background: linear-gradient(135deg, #ff7875 0%, #f5222d 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+/* ===== 撤回弹层 ===== */
+.popup-panel {
+  padding: 20px 16px 16px;
+  background: var(--bg-card);
+}
+
+.popup-panel__title {
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.popup-panel__body {
+  margin-bottom: 16px;
+}
+
+.popup-panel__footer {
+  display: flex;
+  gap: 12px;
+}
+
+.popup-panel__footer .popup-panel__cancel {
+  flex: 1;
+  border-radius: 22px;
+}
+
+.popup-panel__footer .popup-panel__confirm {
+  flex: 1;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #ff7875 0%, #f5222d 100%) !important;
+  border: none !important;
+}
+
 .body {
   padding: 16px;
+  /* 预留底部操作栏高度，避免内容被遮挡 */
+  padding-bottom: 100px;
 }
 
 .tip {

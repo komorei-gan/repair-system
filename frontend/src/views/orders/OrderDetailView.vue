@@ -16,7 +16,7 @@ const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
 
-const loading = ref(false)
+const loading = ref(true)
 const detail = ref<OrderDetailVO | null>(null)
 /** 加载失败原因（工单被删除 / 无权限 / 网络异常），为空表示尚未失败 */
 const errorText = ref('')

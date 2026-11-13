@@ -159,10 +159,17 @@ async function submit(): Promise<void> {
   border: 1px solid #e6f0fb;
   border-radius: 10px;
 }
+html.dark .assign-info {
+  background: #20252c;
+  border-color: #36424f;
+}
 .assign-row {
   font-size: 13px;
   color: #4c647c;
   line-height: 1.9;
+}
+html.dark .assign-row {
+  color: #c2cfdd;
 }
 .assign-row b {
   color: var(--ink-2);

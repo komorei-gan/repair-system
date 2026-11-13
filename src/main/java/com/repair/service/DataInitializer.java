@@ -17,6 +17,7 @@ import com.repair.mapper.RepairOrderMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -39,13 +40,16 @@ import java.util.stream.Collectors;
  *    CONFIRMED×2 / CANCELLED×1 / REJECTED×1，并为每条工单写入对应的 order_log，
  *    保证详情页操作日志（el-timeline）有内容可渲染。
  *
- * <p><b>环境隔离</b>：本类各环境的种子数据均为「不存在才创建」，可安全用于生产首次部署。
+ * <p><b>环境隔离</b>：本类为「种子数据初始化器」，仅限本地开发环境（{@code dev} profile）生效，
+ * 生产环境（{@code prod} 或未指定 profile）下本 Bean 不会被创建，因此<strong>绝不会</strong>
+ * 自动生成 {@code admin / admin123}、{@code master / master123} 等弱口令账号，也不会写入测试工单。
+ * 生产部署必须手动通过安全渠道创建管理员账号与故障分类。
  * 其中「强制重置 zhangsan 密码」的兜底逻辑已拆分到
- * {@link DevReporterAccountResetter}，仅在 {@code dev} profile 下注册，生产环境不会执行。
- * 正式部署后请立即修改密码。
+ * {@link DevReporterAccountResetter}，同样仅在 {@code dev} profile 下注册。
  */
 @Slf4j
 @Component
+@Profile("dev")
 @Order(2)
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {

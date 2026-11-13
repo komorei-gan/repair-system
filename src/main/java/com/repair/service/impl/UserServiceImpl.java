@@ -11,6 +11,7 @@ import com.repair.common.result.PageResult;
 import com.repair.dto.UserInfoVO;
 import com.repair.entity.User;
 import com.repair.mapper.UserMapper;
+import com.repair.security.SecurityUtil;
 import com.repair.service.NotifyService;
 import com.repair.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -109,6 +110,11 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.selectById(id);
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
+        // 安全防线：管理员账号不可被禁用（含禁用自己），避免锁死管理端 / 越权剥夺其他管理员权限
+        if (RoleEnum.ADMIN.equals(user.getRole())
+                || user.getId().equals(SecurityUtil.getCurrentUser().getUserId())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "无法禁用管理员账号");
         }
         userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
                 .eq("id", id)
